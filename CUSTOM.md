@@ -8,6 +8,7 @@
 | --- | --- |
 | `~/Documents/video-creator/showreel/` (이 저장소) | 원본. 수정은 여기서만 한다 |
 | 리모트 `upstream` | `https://github.com/revfactory/showreel.git`(인증 없이 받는 HTTPS) |
+| 리모트 `origin` | `git@github.com:ynginkim/showreel.git`(포크, 공개). `tools/sync.sh`가 `main`을 앞으로 나아가는 경우에만 자동으로 푸시한다 |
 | 브랜치 `main` | `upstream/main` + 로컬 수정. 업스트림 새 커밋은 merge로 받는다(rebase 하지 않는다) |
 | `~/Documents/video-creator/.claude/skills/showreel/` | 설치본(생성물). `tools/sync.sh`가 rsync로 만든다. 직접 고치지 않는다 |
 | `~/Documents/video-creator/.claude/settings.json` | SessionStart 훅이 세션마다 `tools/sync.sh --session-start`를 돌린다 |
@@ -25,6 +26,7 @@ tools/sync.sh --no-fetch      # 네트워크 없이 설치만
   1. `git merge upstream/main`
   2. 충돌 파일마다 업스트림의 새 의미는 받아들이고, 아래 "로컬 수정"의 의도를 다시 적용한다.
   3. 커밋하고 `tools/sync.sh`를 다시 돌린다.
+- 업스트림에 기여할 수정(버그 수정 등)은 `main`이 아니라 `upstream/main`에서 딴 브랜치로 포크에 올려 PR을 연다. 같은 수정을 `main`에도 같은 내용으로 넣어 두면, 업스트림이 받아들인 뒤의 병합이 충돌 없이 끝난다.
 - 업스트림 변경을 먼저 보고 싶으면 `git fetch upstream && git log --oneline main..upstream/main`로 확인한다.
 
 ## 로컬 수정 (의도)

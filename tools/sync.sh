@@ -63,6 +63,23 @@ if [ "$FETCH" = 1 ]; then
   fi
 fi
 
+# 1b) 포크(origin)에 백업 푸시: main 이 origin/main 보다 앞서 있고 작업 트리가 깨끗할 때만, 앞으로 나아가는 푸시만(강제 푸시 안 함)
+if [ "$FETCH" = 1 ] && git remote get-url origin >/dev/null 2>&1; then
+  export GIT_SSH_COMMAND="ssh -o BatchMode=yes -o ConnectTimeout=10"
+  perl -e 'alarm shift; exec @ARGV' 20 git fetch -q origin 2>/dev/null
+  ahead_o=$(git rev-list --count origin/main..main 2>/dev/null || echo 0)
+  behind_o=$(git rev-list --count main..origin/main 2>/dev/null || echo 0)
+  if [ "$ahead_o" -gt 0 ] && [ "$behind_o" = 0 ] && [ -z "$(git status --porcelain --untracked-files=no)" ]; then
+    if perl -e 'alarm shift; exec @ARGV' 30 git push -q origin main 2>/dev/null; then
+      warn "포크(origin)에 커밋 ${ahead_o}개를 올림"
+    else
+      warn "포크(origin) 푸시 실패 — 나중에 git -C $REPO push origin main"
+    fi
+  elif [ "$behind_o" -gt 0 ]; then
+    warn "포크(origin)에 로컬에 없는 커밋 ${behind_o}개가 있다 — 다른 곳에서 고쳤다면 git -C $REPO merge origin/main"
+  fi
+fi
+
 # 2) 의존성(렌더러용 playwright-core)
 lock="scripts/package-lock.json"; stamp="scripts/node_modules/.sync-stamp"
 if [ ! -d scripts/node_modules ] || [ "$lock" -nt "$stamp" ]; then
