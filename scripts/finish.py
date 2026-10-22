@@ -76,7 +76,10 @@ def main():
     outs = [master]
     if not a.no_web:
         web = od / f"{a.name}_공유용.mp4"
-        cmd = ["ffmpeg", "-v", "error", "-y", "-i", str(master), "-c:v", "libx264", "-preset", "slow", "-crf", "23",
+        cmd = ["ffmpeg", "-v", "error", "-y", "-i", str(master)]
+        if a.audio:   # 마스터의 AAC 를 다시 인코딩하면 피크가 올라 보정이 과하게 걸린다(-14 → -17.5 LUFS 사례) → 원본 믹스에서 한 번만 인코딩
+            cmd += ["-i", a.audio, "-map", "0:v:0", "-map", "1:a:0"]
+        cmd += ["-c:v", "libx264", "-preset", "slow", "-crf", "23",
                "-maxrate", "8M", "-bufsize", "16M", "-pix_fmt", "yuv420p", "-colorspace", "bt709", "-color_primaries", "bt709",
                "-color_trc", "bt709", "-color_range", "tv"]
         if a.audio:

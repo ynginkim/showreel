@@ -171,3 +171,24 @@ python3 $S/qa_check.py out/<이름>.mp4 --timeline timeline.json --script script
 - 요청과 다르게 반영한 사실, 공개 전 확인 사항
 - 재생성 명령(위 "고칠 때"와 같은 순서, 실제 경로로)
 - 지우면 안 되는 파일: `audio/vo/`(다시 만들려면 크레딧이 든다), `audio/music/`, `assets/gen/`. 정리를 요청받아도 이 파일들은 남기고, 지운 것과 남긴 것을 나눠 보고한다
+
+## 납품 뒤 정리
+
+5분 영상 한 편이 작업 중에 4GB를 넘게 쓴다(초안·점검 클립·검수 스틸·믹스 스템). 납품 보고를 마치면 `scripts/cleanup.py`로 정리한다. 기본은 목록만 보여 주고, `--apply`를 줘야 지운다(`--trash`면 휴지통으로 옮긴다). 납품본(포스터 JPG가 있는 이름)이 없으면 아무것도 지우지 않는다.
+
+| 남긴다 | 이유 |
+| --- | --- |
+| `out/`의 납품본(마스터·공유용·포스터·자막) | 결과물. 마스터의 영상 스트림이 무음 렌더와 같아서 소리만 다시 입힐 때도 이 파일로 충분하다 |
+| `reel/`, `script.json`, `timeline.json`, `project.json` | 화면을 다시 렌더하는 데 필요하다 |
+| `concept.md`, `storyboard.md`, `research/`, `제작노트.md`, 그 밖의 최상위 `.md` | 판단 기록 |
+| `audio/vo/`, `audio/sfx/` | ElevenLabs 크레딧을 쓴 소리. 다시 만들려면 돈이 든다 |
+| `audio/music/`의 악보(`score.mjs`)·스펙·`analysis.json`과 `script.json`이 가리키는 음악 파일 | 음악은 악보로 다시 렌더할 수 있지만 납품본과 같은 소리를 바로 쓸 수 있게 남긴다 |
+| `assets/` | 사진·생성 이미지(출처 기록, 생성 비용) |
+| `qa/`의 `.md`(비평·검수 보고)와 `final_sheet*.png` | 검수 기록 |
+
+| 지운다 | 다시 만드는 방법 |
+| --- | --- |
+| `out/`의 납품본이 아닌 영상(초안, 구간 초안, `chk_*`, 무음 렌더 `video.mp4`, 렌더 조각, `.parts/`) | 다시 렌더 |
+| `audio/`의 믹스(`mix.wav`, `mix_*.wav`)와 테스트 믹스 | `mix.py` |
+| `audio/music/`에서 `script.json`이 가리키지 않는 음악 테이크 | 쓰지 않은 후보 |
+| `qa/`의 영상·이미지·오디오(스틸, 프레임 띠, 시트, 점검 클립). 단 `final_sheet*.png`는 남긴다 | `render.mjs --stills`, `contact_sheet.py` |
