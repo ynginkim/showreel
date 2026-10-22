@@ -153,6 +153,10 @@ python3 $S/bgm/verify.py <프로젝트>/audio/music/music.wav --mix <프로젝�
 - 필요한 것: Node 18 이상(npm 패키지 없음). `verify.py`는 ffmpeg와 numpy를 쓴다.
 - 납품 보고에 음악은 코드로 합성했다고 적고, 사용자에게 직접 들어 봐 달라고 한다.
 - 효과음은 화면의 움직임마다 맞춰 설계한다. 프리셋 이름만 고르지 말고 `eleven.py sfx "prompt"`로 구간의 재질(종이, 유리, 액체, 전자음)에 맞는 소리를 만든다.
+- 새로 만들기 전에 공용 효과음 라이브러리에서 찾는다.
+  - `python3 $S/sfx_library.py find 종이`로 찾고, `python3 $S/sfx_library.py use <이름…> --to <프로젝트>`로 복사한다.
+  - 라이브러리 위치는 환경 변수 `SHOWREEL_SFX_LIBRARY`이고, 없으면 `<작업 폴더>/sfx-library`다.
+  - 맞는 소리가 없을 때만 새로 만든다. 새로 만든 소리는 `audio/sfx/list.tsv`에 `이름<TAB>길이<TAB>프롬프트`를 한 줄 남긴다. 라이브러리가 이 파일에서 프롬프트를 읽는다.
 
 `timeline.py`가 `timeline.json`(믹서·검수용)과 `reel/timeline.js`(화면용 큐·단어 시각·소리 크기 곡선)를 만든다. 겹침·길이 초과·큐 누락이 있으면 ✗로 알려 주므로 모두 고친 뒤 장면을 만든다. 나레이션 문구나 시각을 바꿀 때는 `script.json`만 고치고 `narrate.py`(바뀐 줄만 다시 생성)와 `timeline.py`를 다시 실행한다.
 
@@ -252,7 +256,10 @@ python3 $S/qa_check.py <프로젝트>/out/<이름>.mp4 --timeline <프로젝트>
 
 5분 영상 한 편이 작업 파일로 4GB를 넘게 쓴다. 납품 보고를 마치면 지울 목록부터 본 뒤 정리한다. 규칙은 `references/qa.md`의 "납품 뒤 정리"에 있다.
 
+정리하기 전에 이 프로젝트에서 새로 만든 효과음을 공용 라이브러리에 등록한다. 내용이 같은 소리는 건너뛴다.
+
 ```bash
+python3 $S/sfx_library.py add <프로젝트>    # 새 효과음을 공용 라이브러리에 등록
 python3 $S/cleanup.py <프로젝트>            # 지울 목록과 크기만 보여 준다
 python3 $S/cleanup.py <프로젝트> --apply    # 지운다(--trash 면 휴지통으로)
 ```

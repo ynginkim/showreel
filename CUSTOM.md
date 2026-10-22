@@ -45,6 +45,7 @@ tools/sync.sh --no-fetch      # 네트워크 없이 설치만
 | `scripts/render_pieces.py` (새 파일) | 구간 조각 최종 렌더 | 장면 코드를 고친 뒤 그 조각만 다시 렌더한다 |
 | `scripts/flash_list.py` (새 파일) | 섬광 전이 프레임 목록 | 최종 렌더에서 생긴 섬광의 원인 프레임을 찾는다 |
 | `scripts/cleanup.py` (새 파일) | 납품 뒤 정리 | 다시 만들 수 있는 작업 파일을 지운다 |
+| `scripts/sfx_library.py` (새 파일), SKILL.md 5단계·납품 뒤 정리 | 공용 효과음 라이브러리(find·use·add·list) | 프로젝트마다 만든 효과음을 모아 다시 쓴다(ElevenLabs 크레딧 절약). 위치는 `SHOWREEL_SFX_LIBRARY` |
 | `tools/sync.sh`, `CUSTOM.md` (새 파일) | 동기화·설치, 이 문서 | 업스트림을 따라가면서 로컬 수정을 지킨다 |
 
 `README.md`, `CONTRIBUTING.md`의 `~/.claude/skills/showreel` 설치 안내는 업스트림 원문 그대로 둔다. 이 수정판은 위 구조로 설치한다.
