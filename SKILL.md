@@ -38,7 +38,7 @@ description: 한국어 모션그래픽 영상(이력서용 쇼릴·홍보 영상
 | --- | --- |
 | 길이·규격 | 60초, 16:9 1920×1080, 30fps. 릴스·쇼츠 용도면 9:16 1080×1920 |
 | 나레이션 | 요청에 있거나 내용을 말로 전해야 할 때만 넣는다. 쇼릴은 음악과 화면으로 전한다. 넣을 때는 콘셉트에 맞는 보이스를 `references/audio.md`의 보이스 표와 `eleven.py voices --lang ko`에서 고른다. Marcus `ibCGc01503OQd2R6i1n1`은 한국어 낭독 설정(`eleven_multilingual_v2`, stability 0.45 · similarity 0.8 · style 0.4)을 검증해 둔 보이스다 |
-| 음악 | ElevenLabs Music(유료 플랜). 쓸 수 없으면 `synth_music.py` 합성 음악 |
+| 음악 | Claude가 JS로 직접 작곡해 합성한다(`scripts/bgm/`, 방법은 `references/bgm.md`). ElevenLabs Music은 쓰지 않는다(크레딧을 가장 많이 쓰는 항목이다). ElevenLabs는 나레이션·효과음에만 쓴다 |
 | 이미지 | 콘셉트에 필요할 때만 codex-image로 생성한다. 실존 인물의 얼굴은 생성하지 않고 실제 사진만 쓴다 |
 | 산출물 | 마스터 MP4, 공유용 MP4, 포스터 JPG, 자막 SRT(나레이션이 있을 때), 제작노트 |
 | 음량 | -14 LUFS. `mix.py`가 true peak -2.0 dBTP로 마스터링하고, 검수 기준은 -1.0 dBTP 이하다 |
@@ -57,11 +57,11 @@ description: 한국어 모션그래픽 영상(이력서용 쇼릴·홍보 영상
 → 8 장면 제작 → 9 초안 렌더·비평 반복 → 10 최종 렌더·믹스·마감 → 11 자동 검수·납품 보고
 ```
 
-질문은 1단계에서 사용자만 아는 사실에 한해서 한다. 그 뒤로는 묻지 않고 납품까지 진행한다. 진행 중 막히는 일(보이스 불가, 음악 API 불가, 확인되지 않는 사실)은 아래 대체 경로로 처리하고 납품 보고에 적는다.
+질문은 1단계에서 사용자만 아는 사실에 한해서 한다. 그 뒤로는 묻지 않고 납품까지 진행한다. 진행 중 막히는 일(보이스 불가, 확인되지 않는 사실)은 아래 대체 경로로 처리하고 납품 보고에 적는다.
 
 오래 걸리는 작업(조사, TTS, 음악 생성, 이미지 생성, 최종 렌더)은 Bash `run_in_background`나 서브에이전트로 돌리고 그동안 다음 단계를 진행한다. `sleep`으로 기다리지 않는다. 구간이 여러 개인 영상은 구간마다 서브에이전트에 나눠 맡겨 동시에 만들 수 있다(`references/engine.md`의 "나눠 만들기").
 
-스크립트 경로는 이 스킬 폴더 기준이다(`~/.claude/skills/showreel/scripts/`). 아래에서 `S=~/.claude/skills/showreel/scripts`로 줄여 쓴다.
+스크립트 경로는 이 스킬 폴더 기준이다. 스킬을 불러올 때 표시되는 "Base directory for this skill"이 스킬 폴더다(프로젝트 스코프로 설치했으면 `<작업 폴더>/.claude/skills/showreel`). 아래에서 `S=<스킬 폴더>/scripts`로 줄여 쓴다.
 
 ## 0. 환경 점검
 
@@ -72,7 +72,7 @@ python3 $S/preflight.py
 결과의 "쓸 수 있는 경로"를 콘셉트에 반영한다.
 
 - **codex CLI나 이미지 스킬이 없을 때**: codex-image·photoreal·codex-cli 스킬은 https://github.com/revfactory/skills 에 있다. 출력된 설치 명령을 사용자에게 안내한다. 설치하지 않으면 코드로 그린 그래픽과 사용자 제공 사진으로 구성한다. 사용자가 "realphoto"라고 부르는 스킬의 실제 이름은 `photoreal`이다.
-- **ElevenLabs 키가 없을 때**: 나레이션이 필요한 요청이면 `preflight.py`가 출력하는 키 발급 절차를 안내하고, 키를 받기 전까지 음악·화면 버전으로 진행할 수 있다고 알린다. 음악은 합성 경로로 만든다.
+- **ElevenLabs 키가 없을 때**: 나레이션이 필요한 요청이면 `preflight.py`가 출력하는 키 발급 절차를 안내하고, 키를 받기 전까지 음악·화면 버전으로 진행할 수 있다고 알린다. 음악은 원래 JS로 작곡하므로 키와 관계없다.
 - **고른 보이스가 막힐 때**(Free 플랜은 라이브러리 보이스를 쓸 수 없다): `python3 $S/eleven.py voices --lang ko`로 쓸 수 있는 보이스를 고르거나 플랜 업그레이드를 안내한다.
 
 ## 1. 요청 읽기
@@ -125,19 +125,33 @@ python3 $S/new_project.py <프로젝트> --ratio 16:9 --duration 60 [--fonts "Ha
 
 ## 5. 오디오를 먼저 만든다
 
-화면의 시각은 음악 박·히트와 나레이션 단어에서 정해지므로 오디오를 먼저 확정한다. 쇼릴은 음악이 편집의 기준이다. 음악 스펙의 섹션을 `concept.md`의 구간과 맞추고, 곡의 장르·악기·질감은 `global_styles`로 콘셉트에 맞게 적는다. 자세한 기준은 `references/audio.md`에 있다.
+화면의 시각은 음악 박·히트와 나레이션 단어에서 정해지므로 오디오를 먼저 확정한다. 쇼릴은 음악이 편집의 기준이다. 음악은 Claude가 직접 작곡한다(`references/bgm.md`). 순서는 이렇다.
+1. `$S/bgm/examples/starter.score.mjs`를 `audio/music/score.mjs`로 복사한다.
+2. 박 격자를 먼저 정한다.
+3. `concept.md`의 구간대로 섹션·에너지·강세를 악보에 적는다. 구간마다 악기·질감은 아트 디렉션에 맞춘다. `spec.json`은 쓰지 않는다.
+4. `script.json`의 `music.file`은 `audio/music/music.wav`로 둔다.
+5. 나레이션을 배치한 뒤 나레이션 빈틈을 악보에 옮겨 적고 다시 렌더한다.
+
+나레이션·효과음 기준은 `references/audio.md`에 있다.
 
 ```bash
 python3 $S/narrate.py <프로젝트>/script.json --stt            # 나레이션이 있을 때. ✗ 줄은 고쳐서 다시
-python3 $S/music_tools.py plan <프로젝트>/audio/music/spec.json # 음악 스펙 → ElevenLabs 구성 플랜
-python3 $S/eleven.py music <프로젝트>/audio/music/music.mp3 --plan <프로젝트>/audio/music/plan.json
-#   402(유료 플랜 필요)면: python3 $S/synth_music.py music <프로젝트>/audio/music/spec.json <프로젝트>/audio/music/music.wav
-python3 $S/music_tools.py analyze <프로젝트>/audio/music/music.mp3   # 템포·히트 → 구간 경계를 히트에 맞춘다
+# 음악: score.mjs를 쓰고(references/bgm.md, 예시 $S/bgm/examples/) 렌더한다. analysis.json은 악보의 정확한 격자로 함께 쓰인다
+node $S/bgm/render.mjs --score <프로젝트>/audio/music/score.mjs --out <프로젝트>/audio/music/music.wav --analysis <프로젝트>/audio/music/analysis.json
+python3 $S/bgm/verify.py <프로젝트>/audio/music/music.wav --analysis <프로젝트>/audio/music/analysis.json --waveform-png   # 음량·섹션 에너지·핵심 히트 정렬
 python3 $S/eleven.py sfx-kit <프로젝트>/audio/sfx --names impact,riser   # 범용 프리셋이 필요한 곳만(합성: synth_music.py sfx). 구간 재질에 맞는 소리는 eleven.py sfx "prompt"
 python3 $S/timeline.py <프로젝트>/script.json --music-analysis audio/music/analysis.json
+python3 $S/bgm/verify.py <프로젝트>/audio/music/music.wav --mix <프로젝트>/timeline.json   # 나레이션이 생긴 뒤: 줄마다 나레이션 대 배경 ✓
 ```
 
-- 음악 섹션은 4마디 단위로 잡는다(120 BPM이면 8초). ElevenLabs Music은 그 단위로 곡을 만들기 때문에, 드롭이 원하는 시각보다 늦게 나오면 `music_tools.py splice`로 빌드업 끝 몇 박 뒤에 드롭 구간을 이어 붙여 당긴다.
+- 음악 섹션은 4마디 단위로 잡고, 구간 경계·큰 히트는 다운비트에 둔다. 악보가 격자를 정하므로 드롭·히트를 원하는 시각에 바로 둘 수 있다.
+- `music_tools.py analyze`로 박을 다시 읽지 않는다. 정확한 격자의 곡도 템포를 약간 틀리게 읽어 5분 끝에서 70ms쯤 어긋난다. `render.mjs`가 쓴 `analysis.json`을 그대로 `timeline.py`에 준다.
+- 음악을 다시 만들어도 박 격자(BPM·첫 다운비트)를 바꾸지 않으면 화면은 다시 렌더하지 않아도 된다. `mix.py`와 `finish.py`만 다시 돌린다.
+- 장면 경계는 `music.hitN`보다 `barN` 큐에 건다. 악보에 섹션이나 강세를 더하거나 빼면 `hitN` 번호가 밀린다.
+- 통과 기준: 나레이션 줄이 모두 ✓이고, 가장 큰 강세가 든 마디가 곡에서 가장 크다.
+- `scripts/bgm/lib/`를 고치면 `references/bgm.md`의 회귀 시험(pstack 악보 렌더 해시 비교)을 다시 돌린다.
+- 필요한 것: Node 18 이상(npm 패키지 없음). `verify.py`는 ffmpeg와 numpy를 쓴다.
+- 납품 보고에 음악은 코드로 합성했다고 적고, 사용자에게 직접 들어 봐 달라고 한다.
 - 효과음은 화면의 움직임마다 맞춰 설계한다. 프리셋 이름만 고르지 말고 `eleven.py sfx "prompt"`로 구간의 재질(종이, 유리, 액체, 전자음)에 맞는 소리를 만든다.
 
 `timeline.py`가 `timeline.json`(믹서·검수용)과 `reel/timeline.js`(화면용 큐·단어 시각·소리 크기 곡선)를 만든다. 겹침·길이 초과·큐 누락이 있으면 ✗로 알려 주므로 모두 고친 뒤 장면을 만든다. 나레이션 문구나 시각을 바꿀 때는 `script.json`만 고치고 `narrate.py`(바뀐 줄만 다시 생성)와 `timeline.py`를 다시 실행한다.
@@ -189,6 +203,8 @@ python3 $S/contact_sheet.py --video <프로젝트>/out/draft.mp4 --around <구�
 
 `motion_check.py`가 △를 내면 그 시각이 의도한 정지인지 확인하고, 아니면 사건을 더한다. 섬광 ✗는 의도와 관계없이 초안 단계에서 고친다(광과민성). 최종 렌더 뒤에 고치면 렌더를 다시 해야 한다. 초안(모션 블러 없음)에서 통과해도 최종 렌더(`--sub 4`)에서는 컷이 두 프레임에 섞여 섬광이 늘 수 있다. 밝은 바탕에서 컷이 잦은 구간은 최종 렌더 전에 그 구간만 `render.mjs --from <초> --to <초> --sub 4 --scale 0.5 --out <프로젝트>/out/chk_<구간>.mp4`로 뽑아 `motion_check.py`로 확인한다. 렌더러가 종료 코드 2로 끝나면 페이지 오류가 난 것이니 로그의 오류부터 고친다.
 
+구간만 뽑은 클립을 검사할 때는 보려는 구간 뒤로 3초 이상 더 뽑는다. `motion_check.py`는 클립의 마지막 3초를 재지 않는다(0~8초 클립으로 확인했다가 7.3~9.4초 정지를 놓친 사례). 섬광이 어느 프레임에서 생기는지는 `python3 $S/flash_list.py <클립> <클립 시작 초>`로 본다.
+
 ## 10. 최종 렌더·믹스·마감
 
 ```bash
@@ -197,6 +213,19 @@ python3 $S/mix.py <프로젝트>/timeline.json
 python3 $S/finish.py --video <프로젝트>/out/video.mp4 --audio <프로젝트>/audio/mix.wav \
   --name "<제목>_<길이>s" --outdir <프로젝트>/out --timeline <프로젝트>/timeline.json
 ```
+
+2분이 넘는 영상은 구간 경계에서 조각으로 나눠 렌더한다. 장면 코드가 한 줄만 바뀌어도 렌더러는 이전 청크를 모두 버리므로, 조각으로 나눠 두면 고친 조각만 다시 렌더하고 이어 붙일 수 있다. 경계는 `초 × fps`가 정수인 시각으로 고른다.
+
+```bash
+python3 $S/render_pieces.py --dir <프로젝트>/reel --out <프로젝트>/out/video.mp4 --cuts 0,51.6,103.2,<길이>        # 전체
+python3 $S/render_pieces.py --dir <프로젝트>/reel --out <프로젝트>/out/video.mp4 --cuts 0,51.6,103.2,<길이> --only 2  # 2번 조각만 다시
+```
+
+**최종 렌더 뒤에는 `motion_check.py <프로젝트>/out/video.mp4`를 반드시 다시 돌린다.** 모션 블러(`--sub 4`) 때문에 초안에 없던 문제가 생긴다.
+- 섬광: 선이 많은 화면 위의 빠른 카메라 이동이 여러 프레임에 섞이면서 생긴다. 카메라 가속을 `inOutSine`처럼 부드럽게 바꿔 해결한 사례가 있다.
+- 정지: 작은 움직임이 블러에 뭉개져 정지로 잡힌다. 느린 카메라 이동을 더해 해결한 사례가 있다.
+
+고친 구간은 그 조각만 다시 렌더한다.
 
 나레이션에 리버브를 넣지 않는다. 2.4초 홀을 `--hall 0.12`로 걸었던 영상에서 "나레이션에 에코가 너무 많다"는 지적을 받았다. 공간감이 꼭 필요할 때만 `--hall 0.04~0.08`을 쓰고, `mix.py`가 출력하는 "말 끝 잔향"이 ✓(-32dB 이하)인지 확인한다.
 
@@ -219,12 +248,21 @@ python3 $S/qa_check.py <프로젝트>/out/<이름>.mp4 --timeline <프로젝트>
 - 재생성 명령
 - 사운드를 직접 들어 봐 달라는 요청. Claude는 소리를 들을 수 없고 수치로만 확인했다.
 
+### 납품 뒤 정리
+
+5분 영상 한 편이 작업 파일로 4GB를 넘게 쓴다. 납품 보고를 마치면 지울 목록부터 본 뒤 정리한다. 규칙은 `references/qa.md`의 "납품 뒤 정리"에 있다.
+
+```bash
+python3 $S/cleanup.py <프로젝트>            # 지울 목록과 크기만 보여 준다
+python3 $S/cleanup.py <프로젝트> --apply    # 지운다(--trash 면 휴지통으로)
+```
+
 ## 지킬 것
 
 - 실존 인물의 얼굴·몸은 이미지로 생성하지 않는다. 생성 이미지는 얼굴이 보이지 않는 환경·사물·뒷모습 컷으로 쓴다.
 - 실존 회사의 로고·브랜드를 흉내 내지 않는다. 가상 의뢰 구간의 브랜드는 이름과 표장을 새로 만든다.
 - 영상의 숫자·직함·연도는 조사 출처가 있는 것만 쓴다. 연출용 가상 수치를 쓰면 화면이나 보고에 그렇다고 밝힌다.
-- 음악 프롬프트에 아티스트·작곡가·곡 이름을 넣지 않는다. 저작권 필터에 걸려 400으로 거부된다.
+- BGM은 코드로만 만든다. 외부 음원·샘플·루프나 음악 생성 서비스(ElevenLabs Music 포함)를 쓰지 않는다.
 - ElevenLabs 크레딧을 아낀다. 바뀐 줄만 다시 만들고, `takes`는 고유명사·숫자 줄에만 쓴다.
 - 섬광은 어두운 배경에서 opacity 0.15 이하로 쓰고, 1초에 3번을 넘기지 않는다(광과민성).
 
@@ -243,7 +281,9 @@ python3 $S/qa_check.py <프로젝트>/out/<이름>.mp4 --timeline <프로젝트>
 | 화면 글꼴이 기본 고딕으로 나옴 | 렌더 로그의 "폰트" 줄 확인, `reel/fonts/fonts.css`에 그 굵기가 있는지 확인 |
 | WebGL 화면이 검게 나옴 | 컨텍스트를 `preserveDrawingBuffer: true`로 만들었는지, render 안에서 그리는지 확인한다. 라이브러리는 `reel/lib/`에 파일로 두고 불러온다 |
 | 장면 경계에서 빈 화면·잔상 | `contact_sheet.py --around`로 ±3프레임을 보고 퇴장을 컷 0.1초 전에 끝낸다 |
-| 음악이 플랜의 섹션 길이와 다름 | 정상이다(대개 4마디 단위로 생성됨). `music_tools.py analyze`로 히트를 읽고 구간 경계를 히트에 맞추거나, `splice`로 드롭을 원하는 시각에 옮긴다 |
+| 음악 박과 화면 박이 어긋남 | `timeline.py`에 `render.mjs`가 쓴 `analysis.json`을 줬는지 확인한다. `music_tools.py analyze`로 다시 읽은 박을 쓰면 곡 끝으로 갈수록 어긋난다 |
+| 최종 렌더에서만 섬광·정지가 나옴 | 모션 블러 탓이다. 그 구간의 카메라 가속을 부드럽게 하거나 사건을 더하고, `render_pieces.py --only`로 그 조각만 다시 렌더한다 |
+| 공유용 음량이 마스터보다 낮음(-17 LUFS 등) | 예전 `finish.py`가 마스터의 AAC를 다시 인코딩하며 피크 보정이 과하게 걸렸다. 지금은 `--audio` 원본에서 인코딩한다. `finish.py`를 다시 돌린다 |
 | 세로(9:16) 영상의 HUD·자막이 앱 UI에 가림 | `fx.js`가 세로 영상이면 위 250px·아래 420px을 자동으로 피한다. 직접 그린 요소도 이 영역을 비운다 |
 | 영상이 yuvj420p·풀레인지로 나옴 | `render.mjs`와 `finish.py`를 거치면 yuv420p·tv로 나온다. 다른 도구로 인코딩하지 않는다 |
 
@@ -253,7 +293,8 @@ python3 $S/qa_check.py <프로젝트>/out/<이름>.mp4 --timeline <프로젝트>
 | --- | --- |
 | `references/brief.md` | 1·2단계: 물을 것과 묻지 않을 것, 콘셉트 만들기와 `concept.md` 양식, 시간·크레딧 추정, 조사·사진 수집 프롬프트 |
 | `references/story.md` | 4단계: 쇼릴 구성, 용도별 참고 구성, 길이별 기준값, 카피·발음 표기 규칙, 원고 양식 |
-| `references/audio.md` | 5·10단계: 보이스·모델·설정, ElevenLabs 키·플랜, 음악·효과음, 믹스 기준 |
+| `references/audio.md` | 5·10단계: 보이스·모델·설정, ElevenLabs 키·플랜, 효과음, 믹스 기준 |
+| `references/bgm.md` | 5단계: Claude가 JS로 BGM을 작곡하는 방법(박 격자, 악보, 렌더, 검증) |
 | `references/images.md` | 6단계: 이미지 생성·실사 사진·누끼·후처리 |
 | `references/design.md` | 2·7·8단계: 아트 디렉션 정하기, 뻔한 화면, 움직임 원칙, 리듬, 한글 타이포, 안전 영역, 전환 |
 | `references/engine.md` | 8단계: 엔진 API, 장면 작성법, WebGL·3D, 나눠 만들기 |

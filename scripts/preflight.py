@@ -110,7 +110,7 @@ def main():
     n = caps.get("narration")
     print(f"  나레이션      {'ElevenLabs (점검 보이스 사용 가능)' if n is True else '다른 보이스 필요' if n == 'other_voice' else '불가 → 음악·자막 버전'}")
     m = caps.get("music_api")
-    print(f"  음악          {'ElevenLabs Music' if m else '합성 음악(synth_music.py)' if m is False else 'ElevenLabs Music 시도 → 402 면 합성 음악'}")
+    print("  음악          Claude 가 JS 로 작곡(scripts/bgm, references/bgm.md) — ElevenLabs Music 은 쓰지 않음")
     if fix:
         print("\n고칠 것:")
         for f in fix:

@@ -98,6 +98,8 @@ stability를 바꾸거나 모델을 통째로 바꾸는 것은 효과가 없었�
 
 ## 음악
 
+> **이 수정판의 기본 경로는 `references/bgm.md`다.** BGM은 Claude가 JS로 작곡하고 `scripts/bgm/render.mjs`로 렌더한다. 아래 ElevenLabs Music·`synth_music.py` 내용은 업스트림 원문이라 남겨 두지만 쓰지 않는다. 스펙(`spec.json`)의 섹션·에너지를 정하는 방법은 그대로 참고한다.
+
 ### 1) 스펙 하나로 두 경로
 
 `audio/music/spec.json`을 한 번 쓰면 ElevenLabs 플랜과 합성 음악을 모두 만들 수 있다.
