@@ -48,3 +48,13 @@ tools/sync.sh --no-fetch      # 네트워크 없이 설치만
 | `tools/sync.sh`, `CUSTOM.md` (새 파일) | 동기화·설치, 이 문서 | 업스트림을 따라가면서 로컬 수정을 지킨다 |
 
 `README.md`, `CONTRIBUTING.md`의 `~/.claude/skills/showreel` 설치 안내는 업스트림 원문 그대로 둔다. 이 수정판은 위 구조로 설치한다.
+
+## 업스트림에 보낸 PR
+
+같은 수정을 `main`에도 병합해 두었다. 업스트림이 받아들이면 다음 동기화가 충돌 없이 끝나고, 아래 표의 해당 행은 지운다. 고쳐 달라는 리뷰가 오면 그 브랜치에서 고쳐 포크에 다시 올리고, `main`에도 다시 병합한다.
+
+| PR | 브랜치 | 내용 |
+| --- | --- | --- |
+| [revfactory/showreel#1](https://github.com/revfactory/showreel/pull/1) | `fix/analyze-beat-drift` | `music_tools.py analyze` 박 주기 다듬기(긴 곡의 박 밀림 33~334ms → 25~27ms), 다운비트 판정을 박 직후 0.1초 저역 평균으로 |
+| [revfactory/showreel#2](https://github.com/revfactory/showreel/pull/2) | `fix/finish-share-loudness` | 공유용 오디오를 원본 믹스에서 인코딩, 피크 보정은 원본에서 누적 이득으로(-17.5 → -14.2 LUFS) |
+| [revfactory/showreel#3](https://github.com/revfactory/showreel/pull/3) | `docs/skill-script-path` | `SKILL.md`·`references/images.md`의 스크립트 경로를 스킬 폴더(Base directory) 기준으로 |
