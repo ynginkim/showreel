@@ -35,13 +35,11 @@ tools/sync.sh --no-fetch      # 네트워크 없이 설치만
 
 | 파일 | 수정 | 의도 |
 | --- | --- | --- |
-| `SKILL.md` | 음악 기본값, 스크립트 경로(`S=<스킬 폴더>/scripts`), 5단계 음악 명령, 9·10단계 검사 보강, 11단계 "납품 뒤 정리", 지킬 것·자주 생기는 문제·참조 표 | BGM은 Claude가 JS로 작곡한다(ElevenLabs Music을 쓰지 않는다). 프로젝트 스코프 설치에서도 경로가 맞게 한다. 실제 제작에서 겪은 문제를 절차에 넣는다 |
-| `references/audio.md` | "음악" 절 맨 앞에 안내 한 단락 | 기본 경로가 `references/bgm.md`임을 알린다. 업스트림 원문은 그대로 둔다 |
+| `SKILL.md` | 음악 기본값, 스크립트 경로(`S=<스킬 폴더>/scripts`), 5단계 음악 명령(op55), 9·10단계 검사 보강, 11단계 "납품 뒤 정리", 지킬 것·자주 생기는 문제·참조 표 | BGM은 [op55](https://github.com/ynginkim/op55) 스킬로 Claude가 작곡한다(ElevenLabs Music을 쓰지 않는다). 프로젝트 스코프 설치에서도 경로가 맞게 한다. 실제 제작에서 겪은 문제를 절차에 넣는다 |
+| `references/audio.md` | "음악" 절 맨 앞에 안내 한 단락 | 기본 경로가 op55 스킬임을 알린다. 업스트림 원문은 그대로 둔다 |
 | `references/qa.md` | 끝에 "납품 뒤 정리" 절 | 무엇을 남기고 무엇을 지우는지 정한다 |
 | `scripts/finish.py` | 공유용 오디오를 `--audio` 원본에서 인코딩 | 마스터의 AAC를 다시 인코딩하며 피크 보정이 과하게 걸려 공유용이 -17.5 LUFS로 나온 버그를 고친다 |
-| `scripts/preflight.py` | 음악 경로 안내 한 줄 | JS 작곡이 기본임을 보인다 |
-| `scripts/bgm/` (새 파일) | JS 합성 라이브러리·렌더 CLI·검증·예시 악보 | Claude가 작곡한 악보를 결정적으로 렌더하고, 정확한 박 격자로 `analysis.json`을 쓴다 |
-| `references/bgm.md` (새 파일) | BGM 작곡 방법 | 프로젝트마다 악보를 쓰는 절차와 검증 |
+| `scripts/preflight.py` | op55 설치·사운드뱅크 점검 한 줄, 음악 경로 안내 | op55가 음악 경로임을 보이고, 그 스킬 폴더(`O`)를 알려 준다 |
 | `scripts/render_pieces.py` (새 파일) | 구간 조각 최종 렌더 | 장면 코드를 고친 뒤 그 조각만 다시 렌더한다 |
 | `scripts/flash_list.py` (새 파일) | 섬광 전이 프레임 목록 | 최종 렌더에서 생긴 섬광의 원인 프레임을 찾는다 |
 | `scripts/cleanup.py` (새 파일) | 납품 뒤 정리 | 다시 만들 수 있는 작업 파일을 지운다 |
@@ -60,4 +58,6 @@ tools/sync.sh --no-fetch      # 네트워크 없이 설치만
 | [revfactory/showreel#2](https://github.com/revfactory/showreel/pull/2) | `fix/finish-share-loudness` | 공유용 오디오를 원본 믹스에서 인코딩, 피크 보정은 원본에서 누적 이득으로(-17.5 → -14.2 LUFS) |
 | [revfactory/showreel#3](https://github.com/revfactory/showreel/pull/3) | `docs/skill-script-path` | `SKILL.md`·`references/images.md`의 스크립트 경로를 스킬 폴더(Base directory) 기준으로 |
 
-제안 이슈: [revfactory/showreel#4](https://github.com/revfactory/showreel/issues/4) — BGM을 JS로 작곡하는 선택지(ElevenLabs Music 비용 대안). 방향이 정해지면 `scripts/bgm/`을 선택지 형태로 다시 정리해 PR로 보낸다. 이 포크는 그때까지 JS 작곡만 쓴다.
+제안 이슈: [revfactory/showreel#4](https://github.com/revfactory/showreel/issues/4) — 음악 단계에 외부 BGM 도구를 연결하는 방식 문서화(ElevenLabs Music 비용 대안). 2026-10-23에 범위를 줄였다: JS 작곡기는 별도 스킬 op55로 분리했고, 이슈는 `music.wav` + `analysis.json` 계약을 문서로 정하자는 제안만 남겼다. 메인테이너가 동의하면 문서 변경(`audio.md` 소절, `SKILL.md` 한 줄)을 작은 PR로 보낸다.
+
+BGM 엔진(`scripts/bgm/`, `references/bgm.md`)은 2026-10-23 [ynginkim/op55](https://github.com/ynginkim/op55)로 옮기고 이 포크에서 지웠다. 같은 악보는 op55에서도 바이트까지 같게 렌더된다(pstack-harness, 2026-10-23-agent-skills 확인). 옛 명령 `node $S/bgm/render.mjs`는 `node $O/render.mjs`로 바꿔 부른다.
