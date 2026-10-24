@@ -95,6 +95,13 @@ class FindOp55Test(unittest.TestCase):
                 os.environ["OP55_SCRIPTS"] = str(scripts)
                 self.assertIsNone(preflight.find_op55())
 
+    def test_new_name_linked_to_legacy_is_rejected(self):
+        old = self.install(self.here.parent.parent, "op55")
+        alias = self.here.parent.parent / "resolve-op55-tools"
+        alias.symlink_to(old.parent, target_is_directory=True)
+        self.assertIsNone(preflight.find_op55())
+        self.assertIn("npx skills@1.7.4 remove op55", self.stderr.getvalue())
+
 
 if __name__ == "__main__":
     unittest.main()

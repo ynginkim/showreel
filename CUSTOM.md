@@ -39,7 +39,7 @@ tools/sync.sh --no-fetch      # 네트워크 없이 설치만
 | `references/audio.md` | "음악" 절 맨 앞에 세 work skill·도구 경로·믹서·계약 안내 | 기본 음악 경로를 op55 새 구조에 맞춘다. 업스트림 원문은 그대로 둔다 |
 | `references/qa.md` | 끝에 "납품 뒤 정리" 절 | 무엇을 남기고 무엇을 지우는지 정한다 |
 | `scripts/finish.py` | 공유용 오디오를 `--audio` 원본에서 인코딩 | 마스터의 AAC를 다시 인코딩하며 피크 보정이 과하게 걸려 공유용이 -17.5 LUFS로 나온 버그를 고친다 |
-| `scripts/preflight.py`, `scripts/test_preflight.py` | `resolve-op55-tools/scripts` 탐색·명시 경로 우선, 옛 구조 거부·이전 안내, 사운드뱅크 점검과 경로 회귀 검사 | 새 엔진 경로(`O`)를 알려 준다. 잘못 지정한 `OP55_SCRIPTS`나 옛 사본을 다른 엔진으로 조용히 대체하지 않는다 |
+| `scripts/preflight.py`, `scripts/test_preflight.py` | `resolve-op55-tools/scripts` 탐색·명시 경로 우선, 옛 구조와 그 심볼릭 링크 거부·이전 안내, 사운드뱅크 점검과 경로 회귀 검사 | 새 엔진 경로(`O`)를 알려 준다. 잘못 지정한 `OP55_SCRIPTS`나 옛 사본을 다른 엔진으로 조용히 대체하지 않는다 |
 | `scripts/render_pieces.py` (새 파일) | 구간 조각 최종 렌더 | 장면 코드를 고친 뒤 그 조각만 다시 렌더한다 |
 | `scripts/flash_list.py` (새 파일) | 섬광 전이 프레임 목록 | 최종 렌더에서 생긴 섬광의 원인 프레임을 찾는다 |
 | `scripts/cleanup.py` (새 파일) | 납품 뒤 정리 | 다시 만들 수 있는 작업 파일을 지운다 |

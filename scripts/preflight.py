@@ -25,17 +25,16 @@ def find_op55():
     roots += [Path.home() / ".claude" / "skills", Path.home() / ".agents" / "skills"]
     given = os.environ.get("OP55_SCRIPTS")
     cands = [Path(given)] if given else [r / "resolve-op55-tools" / "scripts" for r in roots]
+    cands = [c.resolve() for c in cands]
     legacy = [r / "op55" / "scripts" for r in roots]
-    if given and any(p.parent.name == "op55" for p in (Path(given), Path(given).resolve())):
-        legacy.insert(0, Path(given))
-        cands = []
+    legacy += [c for c in cands if c.parent.name == "op55"]
     old = list(dict.fromkeys(c.resolve() for c in legacy if (c / "render.mjs").is_file()))
     if old:
         print("op55 이전 구조는 사용하지 않음: " + ", ".join(map(str, old))
               + "\n새 스킬 8개 설치: npx skills@1.7.4 add ynginkim/op55"
               + "\n옛 사본 제거: npx skills@1.7.4 remove op55 (전역 설치였으면 remove -g op55)", file=sys.stderr)
-    found = next((c.resolve() for c in cands
-                  if all((c / f).is_file() for f in ("render.mjs", "setup.mjs", "verify.py"))), None)
+    found = next((c for c in cands if c.parent.name != "op55"
+                  and all((c / f).is_file() for f in ("render.mjs", "setup.mjs", "verify.py"))), None)
     if given and found is None:
         print(f"OP55_SCRIPTS 경로를 사용할 수 없음: {given}. resolve-op55-tools의 scripts 폴더를 지정하세요.", file=sys.stderr)
     return found
