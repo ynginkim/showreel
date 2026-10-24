@@ -18,13 +18,27 @@ REPO = "https://github.com/revfactory/skills"
 
 
 def find_op55():
-    """op55 BGM 스킬의 scripts 폴더: $OP55_SCRIPTS, 이 스킬 옆, 작업 폴더 위쪽의 .claude/.agents skills, ~/.claude/skills"""
-    cands = [Path(os.environ["OP55_SCRIPTS"])] if os.environ.get("OP55_SCRIPTS") else []
-    cands.append(HERE.parent.parent / "op55" / "scripts")
+    """새 scripts 경로만 선택한다. 명시한 경로가 잘못되면 자동 탐색하지 않는다."""
+    roots = [HERE.parent.parent]
     for d in [Path.cwd(), *Path.cwd().parents]:
-        cands += [d / ".claude" / "skills" / "op55" / "scripts", d / ".agents" / "skills" / "op55" / "scripts"]
-    cands.append(SKILLS / "op55" / "scripts")
-    return next((c.resolve() for c in cands if (c / "render.mjs").exists()), None)
+        roots += [d / ".claude" / "skills", d / ".agents" / "skills"]
+    roots += [Path.home() / ".claude" / "skills", Path.home() / ".agents" / "skills"]
+    given = os.environ.get("OP55_SCRIPTS")
+    cands = [Path(given)] if given else [r / "resolve-op55-tools" / "scripts" for r in roots]
+    legacy = [r / "op55" / "scripts" for r in roots]
+    if given and any(p.parent.name == "op55" for p in (Path(given), Path(given).resolve())):
+        legacy.insert(0, Path(given))
+        cands = []
+    old = list(dict.fromkeys(c.resolve() for c in legacy if (c / "render.mjs").is_file()))
+    if old:
+        print("op55 이전 구조는 사용하지 않음: " + ", ".join(map(str, old))
+              + "\n새 스킬 8개 설치: npx skills@1.7.4 add ynginkim/op55"
+              + "\n옛 사본 제거: npx skills@1.7.4 remove op55 (전역 설치였으면 remove -g op55)", file=sys.stderr)
+    found = next((c.resolve() for c in cands
+                  if all((c / f).is_file() for f in ("render.mjs", "setup.mjs", "verify.py"))), None)
+    if given and found is None:
+        print(f"OP55_SCRIPTS 경로를 사용할 수 없음: {given}. resolve-op55-tools의 scripts 폴더를 지정하세요.", file=sys.stderr)
+    return found
 
 
 def run(cmd, timeout=20):
@@ -72,7 +86,7 @@ def main():
     banks = op55 is not None and run(["node", str(op55 / "setup.mjs"), "--check"])[0] == 0
     row("BGM 스킬(op55)", op55 is not None and banks,
         f"{op55} (사운드뱅크 {'있음' if banks else '없음'})" if op55 else "없음",
-        "npx skills add ynginkim/op55 -a claude-code" if op55 is None else f"node {op55}/setup.mjs")
+        "npx skills@1.7.4 add ynginkim/op55 -a claude-code" if op55 is None else f'node "{op55}/setup.mjs"')
     caps["music"] = str(op55) if op55 else None
 
     # 이미지 생성
@@ -126,7 +140,7 @@ def main():
     n = caps.get("narration")
     print(f"  나레이션      {'ElevenLabs (점검 보이스 사용 가능)' if n is True else '다른 보이스 필요' if n == 'other_voice' else '불가 → 음악·자막 버전'}")
     m = caps.get("music_api")
-    print(f"  음악          {'op55 로 Claude 가 작곡(O=' + caps['music'] + ')' if caps.get('music') else 'op55 설치 필요(npx skills add ynginkim/op55)'} — ElevenLabs Music 은 쓰지 않음")
+    print(f"  음악          {'op55 로 Claude 가 작곡(O=' + caps['music'] + ')' if caps.get('music') else 'op55 설치 필요(npx skills@1.7.4 add ynginkim/op55)'} — ElevenLabs Music 은 쓰지 않음")
     if fix:
         print("\n고칠 것:")
         for f in fix:
