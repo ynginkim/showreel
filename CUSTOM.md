@@ -35,16 +35,17 @@ tools/sync.sh --no-fetch      # 네트워크 없이 설치만
 
 | 파일 | 수정 | 의도 |
 | --- | --- | --- |
-| `SKILL.md` | 음악 기본값, 스크립트 경로(`S=<스킬 폴더>/scripts`), 5단계 음악 명령(op55), 9·10단계 검사 보강, 11단계 "납품 뒤 정리", 지킬 것·자주 생기는 문제·참조 표 | BGM은 [op55](https://github.com/ynginkim/op55) 스킬로 Claude가 작곡한다(ElevenLabs Music을 쓰지 않는다). 프로젝트 스코프 설치에서도 경로가 맞게 한다. 실제 제작에서 겪은 문제를 절차에 넣는다 |
-| `references/audio.md` | "음악" 절 맨 앞에 안내 한 단락 | 기본 경로가 op55 스킬임을 알린다. 업스트림 원문은 그대로 둔다 |
+| `SKILL.md` | 음악 기본값, 스크립트 경로, 5단계 실행 순서·명령, 9·10단계 검사 보강, 11단계 "납품 뒤 정리", 지킬 것·참조 표 | op55 연동 상세는 `references/op55.md`로 연결하고 여기서는 실행 순서와 명령을 관리한다 |
+| `references/audio.md` | "음악" 절 맨 앞에 `op55.md` 링크 | op55 연동 규칙을 복제하지 않는다. 업스트림 원문은 그대로 둔다 |
+| `references/op55.md` (새 파일) | op55 출력 소비·경로·제작·교체·납품 규칙을 한 곳에서 관리 | showreel 내부 동작을 쓰는 쪽에서 소유한다. 포크 전용 새 파일로 업스트림 병합 충돌을 줄인다 |
 | `references/qa.md` | 끝에 "납품 뒤 정리" 절 | 무엇을 남기고 무엇을 지우는지 정한다 |
 | `scripts/finish.py` | 공유용 오디오를 `--audio` 원본에서 인코딩 | 마스터의 AAC를 다시 인코딩하며 피크 보정이 과하게 걸려 공유용이 -17.5 LUFS로 나온 버그를 고친다 |
-| `scripts/preflight.py` | op55 설치·사운드뱅크 점검 한 줄, 음악 경로 안내 | op55가 음악 경로임을 보이고, 그 스킬 폴더(`O`)를 알려 준다 |
+| `scripts/preflight.py`, `scripts/test_preflight.py` | op55 새 도구 탐색·옛 구조 거부, 사운드뱅크 점검과 경로 회귀 검사 | 음악 도구의 선택 결과를 검증한다. 탐색 규칙 정본은 `references/op55.md`에 둔다 |
 | `scripts/render_pieces.py` (새 파일) | 구간 조각 최종 렌더 | 장면 코드를 고친 뒤 그 조각만 다시 렌더한다 |
 | `scripts/flash_list.py` (새 파일) | 섬광 전이 프레임 목록 | 최종 렌더에서 생긴 섬광의 원인 프레임을 찾는다 |
 | `scripts/cleanup.py` (새 파일) | 납품 뒤 정리 | 다시 만들 수 있는 작업 파일을 지운다 |
 | `scripts/sfx_library.py` (새 파일), SKILL.md 5단계·납품 뒤 정리 | 공용 효과음 라이브러리(find·use·add·list) | 프로젝트마다 만든 효과음을 모아 다시 쓴다(ElevenLabs 크레딧 절약). 위치는 `SHOWREEL_SFX_LIBRARY` |
-| `README.md`, `README.ko.md` | 맨 앞 포크 안내, 음악·효과음 기능, 요구 사항, 설치(포크 clone, op55 설치), 기본값, 스크립트 표, 환경 변수, 문제 해결, 감사의 말 | README가 실제 코드(op55 BGM, ElevenLabs는 나레이션·받아쓰기·효과음만)와 맞게 한다. 업스트림이 README를 바꾸면 merge 충돌이 날 수 있다 |
+| `README.md`, `README.ko.md` | 포크 안내, 기능·요구 사항, 설치·환경 변수·문제 해결에서 op55 연동 문서로 연결, 스크립트 표·감사의 말 | 두 언어판의 설명을 실제 코드와 맞추고 연동 규칙은 한 곳에서 관리한다 |
 | `tools/sync.sh`, `CUSTOM.md` (새 파일) | 동기화·설치, 이 문서 | 업스트림을 따라가면서 로컬 수정을 지킨다 |
 
 `CONTRIBUTING.md`의 설치 안내는 업스트림 원문 그대로 둔다. README의 설치 안내는 이 포크와 op55 기준으로 고쳤다. 이 수정판은 위 구조로 설치한다.

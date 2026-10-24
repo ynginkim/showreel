@@ -98,7 +98,7 @@ stability를 바꾸거나 모델을 통째로 바꾸는 것은 효과가 없었�
 
 ## 음악
 
-> **이 수정판의 기본 경로는 [op55](https://github.com/ynginkim/op55) 스킬이다.** BGM은 Claude가 op55로 작곡·렌더·검증하고, op55가 쓴 `music.wav`와 `analysis.json`을 `script.json`의 `music.file`과 `timeline.py --music-analysis`에 그대로 준다. 아래 ElevenLabs Music·`synth_music.py` 내용은 업스트림 원문이라 남겨 두지만 쓰지 않는다. 스펙(`spec.json`)의 섹션·에너지를 정하는 방법은 그대로 참고한다.
+> 이 수정판의 음악 절차는 [op55 연동](op55.md)을 따른다. 아래 ElevenLabs Music·`synth_music.py` 내용은 업스트림 원문이라 남겨 두지만 쓰지 않는다. 스펙(`spec.json`)의 섹션·에너지를 정하는 방법은 그대로 참고한다.
 
 ### 1) 스펙 하나로 두 경로
 
