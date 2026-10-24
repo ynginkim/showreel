@@ -23,6 +23,8 @@
 
 ---
 
+> **About this fork (ynginkim/showreel).** Background music is composed in code by Claude with the [op55](https://github.com/ynginkim/op55) skill. ElevenLabs Music is not used; ElevenLabs is used only for narration, STT and SFX. The demo below was made with upstream v1.0.0 using ElevenLabs music.
+
 ## Demo
 
 The full 2-minute video was produced by this skill from one prompt: four ElevenLabs voices, generated music, sound effects, AI images, 22 motion techniques and an automated QA pass.
@@ -83,7 +85,7 @@ The skill is written for Korean content (Korean typography, Korean narration and
 | **Research** | Runs a background research agent. Every fact in the video needs a source URL and a confidence level; dates are checked against the calendar. |
 | **Script** | Separates on-screen text from pronunciation text, sizes the script to the length (60 s ≈ 240–255 Korean characters) and names cue words for scene changes. |
 | **Narration** | Used only when the request or the content needs it. ElevenLabs TTS (voice chosen to fit the concept; Marcus, a deep baritone, has verified reading settings) with per-line takes, regeneration of changed lines only, and STT verification of every line. |
-| **Music & SFX** | ElevenLabs Music planned in 4-bar sections, beat/hit analysis and splicing to move a drop; a NumPy synthesizer as a fallback; a 24-preset SFX kit. |
+| **Music & SFX** | Music composed by Claude with the [op55](https://github.com/ynginkim/op55) skill: a `score.mjs` score rendered deterministically from synth voices and SoundFont samples, then verified by numbers (loudness, grid, energy). op55's `analysis.json` (the exact beat grid computed from the score) feeds the timeline directly. ElevenLabs Music is not used. SFX come from the ElevenLabs SFX API or the NumPy synthesizer; a 24-preset SFX kit. |
 | **Images** | Generates only the scenes that need images with [codex-image](https://github.com/revfactory/skills), plus letterbox removal, upscaling and macOS Vision cutouts. Real people are never generated. |
 | **Motion engine** | A deterministic HTML/JS timeline (`REEL`): every frame is a pure function of time, so frames can be rendered in any order by parallel workers. |
 | **Techniques** | 22 proven code techniques (Hangul jamo assembly, variable-weight waves, glass type, particle type, match cuts and more) plus WebGL2 shaders, three.js 3D and precomputed simulations. The catalog is a code library, not a menu: segments start from the concept. |
@@ -120,10 +122,11 @@ Long-running steps (research, TTS, music, image generation, final render) run in
 | [Claude Code](https://docs.claude.com/en/docs/claude-code/overview) | Yes | Runs the skill |
 | macOS | Recommended | Tested platform. Linux works for rendering and audio with `REEL_CHROME_PATH`; cutouts need macOS |
 | Python 3.10+ with `numpy` and `Pillow` | Yes | Timeline, mix, QA, image prep, synthesizer |
-| Node.js 20+ | Yes | Renderer (`playwright-core`) |
+| Node.js 20+ | Yes | Renderer (`playwright-core`), op55 music render |
+| [op55](https://github.com/ynginkim/op55) skill and sound banks (88 MB) | For music | Background music composition, render and verification. No music API key needed |
 | Google Chrome (or Chromium) | Yes | Headless rendering. No browser download needed |
 | ffmpeg with `loudnorm`, `ebur128`, `freezedetect`, `signalstats`, `tmix` | Yes | Encoding, loudness, QA |
-| [ElevenLabs](https://elevenlabs.io) API key | For narration | TTS, STT verification, SFX. **Music requires a paid plan**; library voices such as Marcus are not available on the Free plan |
+| [ElevenLabs](https://elevenlabs.io) API key | For narration | TTS, STT verification, SFX. Not used for music. Library voices such as Marcus are not available on the Free plan |
 | [Codex CLI](https://github.com/openai/codex) + [codex-image](https://github.com/revfactory/skills) skill | Optional | AI image generation. Without it, videos use typography, graphics and your own photos |
 | [photoreal](https://github.com/revfactory/skills) skill | Optional | Prompt design for photographic images with people |
 | Xcode command line tools (`swiftc`) | Optional | Person cutouts with macOS Vision |
@@ -136,10 +139,10 @@ Korean fonts (Pretendard and Google Fonts families, all SIL OFL) are copied from
 
 ```bash
 # Personal skill (available in every project)
-git clone https://github.com/revfactory/showreel.git ~/.claude/skills/showreel
+git clone https://github.com/ynginkim/showreel.git ~/.claude/skills/showreel
 
 # Or project skill (shared with your team through the repository)
-git clone https://github.com/revfactory/showreel.git .claude/skills/showreel
+git clone https://github.com/ynginkim/showreel.git .claude/skills/showreel
 ```
 
 **2. Install dependencies**
@@ -150,7 +153,16 @@ python3 -m pip install numpy pillow
 cd ~/.claude/skills/showreel/scripts && npm install
 ```
 
-**3. Set your ElevenLabs API key** (needed for narration)
+**3. Install op55** (background music)
+
+```bash
+npx skills add ynginkim/op55 -a claude-code          # add -g to use it in every project
+node <op55 skill folder>/scripts/setup.mjs            # downloads the sound banks (88 MB) to ~/.cache/op55
+```
+
+`preflight.py` looks for op55 in `$OP55_SCRIPTS`, next to the showreel folder, in `.claude/skills` or `.agents/skills` above the working folder, and in `~/.claude/skills`, and reports the path it found and whether the sound banks are present.
+
+**4. Set your ElevenLabs API key** (needed for narration)
 
 ```bash
 echo 'export ELEVENLABS_API_KEY="sk_..."' >> ~/.zshrc && source ~/.zshrc
@@ -158,13 +170,13 @@ echo 'export ELEVENLABS_API_KEY="sk_..."' >> ~/.zshrc && source ~/.zshrc
 
 You can also put `ELEVENLABS_API_KEY=sk_...` in a `.env` file in the project folder.
 
-**4. Check the environment**
+**5. Check the environment**
 
 ```bash
 python3 ~/.claude/skills/showreel/scripts/preflight.py
 ```
 
-The preflight report lists each tool as ✓ or ✗, prints the install command for anything missing, and shows which production paths are available (narration, music API, image generation).
+The preflight report lists each tool as ✓ or ✗, prints the install command for anything missing, and shows which production paths are available (narration, music via op55, image generation).
 
 ## Quick start
 
@@ -207,7 +219,7 @@ Anything you do not specify uses these values.
 | Length & format | 60 s, 16:9, 1920×1080, 30 fps (15 s / 30 s / 60 s / 100 s / 5 min and 9:16 vertical supported) |
 | Mood & art direction | None by default. Decided per project and per segment in `concept.md` |
 | Narration | Only when requested or needed; voice chosen per concept. Verified reading settings for ElevenLabs Marcus `ibCGc01503OQd2R6i1n1`: `eleven_multilingual_v2`, stability 0.45 · similarity 0.8 · style 0.4. No reverb on the voice |
-| Music | ElevenLabs Music; `synth_music.py` when the API is unavailable |
+| Music | Composed with op55 (synth voices + SoundFont samples). ElevenLabs Music is not used |
 | Images | Generated only where needed; real people only from real photos |
 | Loudness | −14 LUFS integrated. `mix.py` masters to −2.0 dBTP true peak; QA accepts ≤ −1.0 dBTP |
 | Deliverables | Master MP4, share MP4, poster JPG, SRT (with narration), production note |
@@ -218,12 +230,12 @@ All scripts live in `scripts/`. Claude runs them for you; the table is for refer
 
 | Script | Purpose |
 | --- | --- |
-| `preflight.py` | Checks tools, keys, voices, plan and credits; prints install steps |
+| `preflight.py` | Checks tools, keys, voices, plan, credits, and op55 with its sound banks; prints install steps |
 | `new_project.py` | Creates the project folders, engine template, fonts and renderer dependencies. `--fonts` adds Google Fonts families |
 | `narrate.py` | Generates narration per line from `script.json`, only for changed lines; `--stt` verifies pronunciation |
 | `eleven.py` | ElevenLabs client (TTS, STT, Music, SFX, voices) using `curl`, with error-body detection |
-| `music_tools.py` | Music spec → ElevenLabs composition plan; tempo/hit analysis; splicing |
-| `synth_music.py` | Deterministic NumPy music and SFX synthesizer (fallback) |
+| `music_tools.py` | Upstream ElevenLabs music tools (composition plan, tempo/hit analysis, splicing). Not used on the default path; re-analyzing an op55 track's beats with `analyze` drifts toward the end |
+| `synth_music.py` | Deterministic NumPy SFX synthesizer (and upstream's fallback music). Used only for SFX on this fork's default path |
 | `timeline.py` | Builds `timeline.json` and `reel/timeline.js` (cues, word timings, loudness curve); flags overlaps and missing cues |
 | `prep_images.py` | Letterbox removal, upscaling, cutouts, review sheet |
 | `codex_ref_image.sh` | Image generation with a reference photo |
@@ -234,6 +246,8 @@ All scripts live in `scripts/`. Claude runs them for you; the table is for refer
 | `finish.py` | Muxes video and audio, builds the share version, poster and SRT |
 | `qa_check.py` | Final automated QA and `qa/qa_report.md` |
 
+Music render and verification are handled by op55's `render.mjs` and `verify.py` (step 5 in `SKILL.md`).
+
 ## Repository layout
 
 ```text
@@ -242,7 +256,7 @@ showreel/
 ├── references/          Detailed guides loaded per step
 │   ├── brief.md         What to ask, concept candidates and concept.md template, research prompt, time/credit estimates
 │   ├── story.md         Structures by purpose and length, copy and pronunciation rules
-│   ├── audio.md         Voices, ElevenLabs plans, music, SFX, mix targets
+│   ├── audio.md         Voices, ElevenLabs plans, music (op55 hookup), SFX, mix targets
 │   ├── images.md        Image generation, real photos, cutouts
 │   ├── design.md        Art direction, the template look to avoid, motion principles, rhythm, Korean typography
 │   ├── engine.md        Engine API, scene authoring, WebGL & 3D, splitting work across agents
@@ -263,6 +277,7 @@ showreel/
 | `ELEVENLABS_API_KEY` | ElevenLabs key. Read from the environment or from `.env` in the project folder |
 | `REEL_CHROME_PATH` | Path to a Chrome/Chromium executable when Chrome is not installed in the default location |
 | `REEL_CHROME_CHANNEL` | Playwright browser channel (default `chrome`) |
+| `OP55_SCRIPTS` | The op55 skill's `scripts` folder, if it isn't found in the default locations |
 
 ## Troubleshooting
 
@@ -274,7 +289,8 @@ showreel/
 | Narration sounds echoey | Remix without `--hall` (`mix.py` → `finish.py`, no re-render). If you keep reverb, lower `--hall` until the "tail after speech" check shows ✓ |
 | The video looks static | Check whether the times `motion_check.py` reports are intended holds; if not, add events (entrances, re-layouts, camera moves) and turn exits into motion that leads into the next composition |
 | Fonts fall back to a default sans | Check the font line in the render log and the weights in `reel/fonts/fonts.css` |
-| `402` from ElevenLabs Music | Music needs a paid plan. Use `synth_music.py` |
+| `preflight.py` shows the BGM skill (op55) as ✗ | Install with `npx skills add ynginkim/op55 -a claude-code` and fetch the banks with `node <op55>/scripts/setup.mjs`. If it lives elsewhere, set `OP55_SCRIPTS` |
+| Music beats and picture beats drift apart | Pass the `analysis.json` written by op55's `render.mjs` to `timeline.py`. Don't use beats re-read by `music_tools.py analyze` |
 
 More cases are listed in `SKILL.md` and each file in `references/`.
 
@@ -303,7 +319,8 @@ Media in `docs/media/` and the demo video were produced with this skill. The dem
 ## Acknowledgments
 
 - [Playwright](https://playwright.dev/) for driving headless Chrome
-- [ElevenLabs](https://elevenlabs.io) for TTS, STT, Music and SFX APIs
+- [op55](https://github.com/ynginkim/op55) for background music composition, render and verification
+- [ElevenLabs](https://elevenlabs.io) for TTS, STT and SFX APIs (and the music in the upstream demo)
 - [Pretendard](https://github.com/orioncactus/pretendard) and [Google Fonts](https://fonts.google.com/) (Noto Serif KR, Black Han Sans, Anton, JetBrains Mono), all under the SIL Open Font License
 - [FFmpeg](https://ffmpeg.org/) for encoding and loudness measurement
 
