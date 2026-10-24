@@ -10,7 +10,7 @@
 [![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-d97757.svg)](https://docs.claude.com/en/docs/claude-code/skills)
 [![Platform: macOS](https://img.shields.io/badge/platform-macOS-lightgrey.svg)](#requirements)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776ab.svg)](https://www.python.org/)
-[![Node.js 20+](https://img.shields.io/badge/node-20%2B-339933.svg)](https://nodejs.org/)
+[![Node.js 22.20.0+](https://img.shields.io/badge/node-22.20.0%2B-339933.svg)](https://nodejs.org/)
 [![Release](https://img.shields.io/github/v/release/revfactory/showreel?color=3fe3ff)](https://github.com/revfactory/showreel/releases)
 
 <a href="https://github.com/revfactory/showreel/releases/download/v1.0.0/showreel-promo-120s.mp4">
@@ -122,8 +122,8 @@ Long-running steps (research, TTS, music, image generation, final render) run in
 | [Claude Code](https://docs.claude.com/en/docs/claude-code/overview) | Yes | Runs the skill |
 | macOS | Recommended | Tested platform. Linux works for rendering and audio with `REEL_CHROME_PATH`; cutouts need macOS |
 | Python 3.10+ with `numpy` and `Pillow` | Yes | Timeline, mix, QA, image prep, synthesizer |
-| Node.js 20+ | Yes | Renderer (`playwright-core`), op55 music render |
-| [op55](https://github.com/ynginkim/op55) skill and sound banks (88 MB) | For music | Background music composition, render and verification. No music API key needed |
+| Node.js 22.20.0+ | Yes | Renderer (`playwright-core`) and the `skills@1.7.4` installer. op55 rendering alone needs Node ≥ 18 |
+| [op55](https://github.com/ynginkim/op55) skillset (8 skills) and sound banks (88 MB) | For music | Background music composition, render and verification. No music API key needed |
 | Google Chrome (or Chromium) | Yes | Headless rendering. No browser download needed |
 | ffmpeg with `loudnorm`, `ebur128`, `freezedetect`, `signalstats`, `tmix` | Yes | Encoding, loudness, QA |
 | [ElevenLabs](https://elevenlabs.io) API key | For narration | TTS, STT verification, SFX. Not used for music. Library voices such as Marcus are not available on the Free plan |
@@ -156,11 +156,15 @@ cd ~/.claude/skills/showreel/scripts && npm install
 **3. Install op55** (background music)
 
 ```bash
-npx skills add ynginkim/op55 -a claude-code          # add -g to use it in every project
-node <op55 skill folder>/scripts/setup.mjs            # downloads the sound banks (88 MB) to ~/.cache/op55
+npx skills@1.7.4 add ynginkim/op55 -a claude-code    # add -g to use it in every project
+node "<resolve-op55-tools>/scripts/setup.mjs"         # downloads the sound banks (88 MB) to ~/.cache/op55
 ```
 
-`preflight.py` looks for op55 in `$OP55_SCRIPTS`, next to the showreel folder, in `.claude/skills` or `.agents/skills` above the working folder, and in `~/.claude/skills`, and reports the path it found and whether the sound banks are present.
+Install all eight skills together: `op55-mode`, `op55-compose`, `op55-render`, `op55-verify`, `resolve-op55-tools`, and three principles. `<resolve-op55-tools>` above is that installed skill's base directory. showreel reads the three work skills (`op55-compose`, `op55-render`, `op55-verify`) directly. It does not run `op55-mode` inside showreel.
+
+`preflight.py` uses `$OP55_SCRIPTS` when set. Otherwise it looks for `resolve-op55-tools/scripts` next to the showreel folder, in `.claude/skills` and `.agents/skills` at and above the working folder, then in `~/.claude/skills` and `~/.agents/skills`. It reports the resolved path and whether the sound banks are present. An invalid explicit path stops music discovery. Old single-skill installs are never selected; preflight prints migration instructions.
+
+To upgrade, run the `add` command above, then `npx skills@1.7.4 remove op55` (or `npx skills@1.7.4 remove -g op55` for a global install). Scores and the bank cache stay in place. Once `resolve-op55-tools` confirms the scripts path, pass it explicitly: `OP55_SCRIPTS="<resolve-op55-tools>/scripts" python3 "<showreel>/scripts/preflight.py"`.
 
 **4. Set your ElevenLabs API key** (needed for narration)
 
@@ -246,7 +250,7 @@ All scripts live in `scripts/`. Claude runs them for you; the table is for refer
 | `finish.py` | Muxes video and audio, builds the share version, poster and SRT |
 | `qa_check.py` | Final automated QA and `qa/qa_report.md` |
 
-Music render and verification are handled by op55's `render.mjs` and `verify.py` (step 5 in `SKILL.md`).
+Music render and verification use `render.mjs` and `verify.py` in `resolve-op55-tools/scripts` (step 5 in `SKILL.md`). For a showreel test mix, pass `--mix timeline.json --mix-py "<showreel scripts>/mix.py"` to `verify.py`. The contract is in the installed `resolve-op55-tools/references/showreel-contract.md`.
 
 ## Repository layout
 
@@ -277,7 +281,7 @@ showreel/
 | `ELEVENLABS_API_KEY` | ElevenLabs key. Read from the environment or from `.env` in the project folder |
 | `REEL_CHROME_PATH` | Path to a Chrome/Chromium executable when Chrome is not installed in the default location |
 | `REEL_CHROME_CHANNEL` | Playwright browser channel (default `chrome`) |
-| `OP55_SCRIPTS` | The op55 skill's `scripts` folder, if it isn't found in the default locations |
+| `OP55_SCRIPTS` | Confirmed absolute path of `resolve-op55-tools/scripts`. Overrides discovery; an invalid path does not fall back |
 
 ## Troubleshooting
 
@@ -289,7 +293,7 @@ showreel/
 | Narration sounds echoey | Remix without `--hall` (`mix.py` → `finish.py`, no re-render). If you keep reverb, lower `--hall` until the "tail after speech" check shows ✓ |
 | The video looks static | Check whether the times `motion_check.py` reports are intended holds; if not, add events (entrances, re-layouts, camera moves) and turn exits into motion that leads into the next composition |
 | Fonts fall back to a default sans | Check the font line in the render log and the weights in `reel/fonts/fonts.css` |
-| `preflight.py` shows the BGM skill (op55) as ✗ | Install with `npx skills add ynginkim/op55 -a claude-code` and fetch the banks with `node <op55>/scripts/setup.mjs`. If it lives elsewhere, set `OP55_SCRIPTS` |
+| `preflight.py` shows the BGM skill (op55) as ✗ | Install all 8 skills with `npx skills@1.7.4 add ynginkim/op55 -a claude-code`, then run `node "<resolve-op55-tools>/scripts/setup.mjs"`. Remove the old skill with `npx skills@1.7.4 remove op55` (`remove -g op55` for global). Correct or unset an invalid `OP55_SCRIPTS` |
 | Music beats and picture beats drift apart | Pass the `analysis.json` written by op55's `render.mjs` to `timeline.py`. Don't use beats re-read by `music_tools.py analyze` |
 
 More cases are listed in `SKILL.md` and each file in `references/`.

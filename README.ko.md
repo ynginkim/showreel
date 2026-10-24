@@ -10,7 +10,7 @@
 [![Claude Code Skill](https://img.shields.io/badge/Claude%20Code-Skill-d97757.svg)](https://docs.claude.com/en/docs/claude-code/skills)
 [![Platform: macOS](https://img.shields.io/badge/platform-macOS-lightgrey.svg)](#요구-사항)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776ab.svg)](https://www.python.org/)
-[![Node.js 20+](https://img.shields.io/badge/node-20%2B-339933.svg)](https://nodejs.org/)
+[![Node.js 22.20.0+](https://img.shields.io/badge/node-22.20.0%2B-339933.svg)](https://nodejs.org/)
 [![Release](https://img.shields.io/github/v/release/revfactory/showreel?color=3fe3ff)](https://github.com/revfactory/showreel/releases)
 
 <a href="https://github.com/revfactory/showreel/releases/download/v1.0.0/showreel-promo-120s.mp4">
@@ -114,8 +114,8 @@ flowchart LR
 | [Claude Code](https://docs.claude.com/en/docs/claude-code/overview) | 필수 | 스킬 실행 |
 | macOS | 권장 | 개발·검증한 환경입니다. Linux에서도 `REEL_CHROME_PATH`를 지정하면 렌더와 오디오 처리는 됩니다. 누끼는 macOS에서만 됩니다 |
 | Python 3.10 이상, `numpy`, `Pillow` | 필수 | 타임라인, 믹스, 검수, 이미지 후처리, 합성기 |
-| Node.js 20 이상 | 필수 | 렌더러(`playwright-core`), op55 음악 렌더 |
-| [op55](https://github.com/ynginkim/op55) 스킬과 사운드뱅크(88MB) | 음악에 필요 | 배경음악 작곡·렌더·검증. 음악 API 키는 필요 없습니다 |
+| Node.js 22.20.0 이상 | 필수 | 렌더러(`playwright-core`)와 `skills@1.7.4` 설치. op55 렌더만 하면 Node 18 이상 |
+| [op55](https://github.com/ynginkim/op55) 스킬 8개와 사운드뱅크(88MB) | 음악에 필요 | 배경음악 작곡·렌더·검증. 음악 API 키는 필요 없습니다 |
 | Google Chrome 또는 Chromium | 필수 | 헤드리스 렌더. 브라우저를 따로 내려받지 않습니다 |
 | ffmpeg(`loudnorm`, `ebur128`, `freezedetect`, `signalstats`, `tmix` 필터 포함) | 필수 | 인코딩, 음량 측정, 검수 |
 | [ElevenLabs](https://elevenlabs.io) API 키 | 나레이션에 필요 | TTS, 받아쓰기 검증, 효과음. 음악에는 쓰지 않습니다. Free 플랜에서는 Marcus 같은 라이브러리 보이스를 쓸 수 없습니다 |
@@ -148,11 +148,15 @@ cd ~/.claude/skills/showreel/scripts && npm install
 **3. op55 설치**(배경음악)
 
 ```bash
-npx skills add ynginkim/op55 -a claude-code          # 모든 프로젝트에 쓰려면 -g
-node <op55 스킬 폴더>/scripts/setup.mjs               # 사운드뱅크(88MB)를 ~/.cache/op55에 받습니다
+npx skills@1.7.4 add ynginkim/op55 -a claude-code    # 모든 프로젝트에 쓰려면 -g
+node "<resolve-op55-tools>/scripts/setup.mjs"         # 사운드뱅크(88MB)를 ~/.cache/op55에 받습니다
 ```
 
-`preflight.py`는 op55를 `$OP55_SCRIPTS`, showreel 옆 폴더, 작업 폴더 위쪽의 `.claude/skills`·`.agents/skills`, `~/.claude/skills` 순서로 찾고, 찾은 경로와 사운드뱅크 유무를 보여 줍니다.
+`op55-mode`, `op55-compose`, `op55-render`, `op55-verify`, `resolve-op55-tools`, principle 3개를 모두 함께 설치합니다. 위 `<resolve-op55-tools>`는 설치된 해당 스킬의 base directory입니다. showreel은 세 work skill(`op55-compose`·`op55-render`·`op55-verify`)을 직접 읽으며, 내부에서 `op55-mode`를 실행하지 않습니다.
+
+`preflight.py`는 `$OP55_SCRIPTS`가 있으면 그 경로를 씁니다. 없으면 `resolve-op55-tools/scripts`를 showreel 옆, 현재 작업 폴더부터 상위의 `.claude/skills`·`.agents/skills`, `~/.claude/skills`·`~/.agents/skills` 순서로 찾습니다. 찾은 절대 경로와 사운드뱅크 유무를 보여 줍니다. 명시한 경로가 잘못되면 음악 탐색을 멈춥니다. 옛 단일 스킬은 선택하지 않고 이전 명령을 안내합니다.
+
+이전하려면 위 `add` 명령을 실행한 뒤 `npx skills@1.7.4 remove op55`로 옛 스킬을 제거합니다(전역 설치는 `npx skills@1.7.4 remove -g op55`). 악보와 bank 캐시는 그대로 남습니다. `resolve-op55-tools`로 scripts 경로를 확인했다면 `OP55_SCRIPTS="<resolve-op55-tools>/scripts" python3 "<showreel>/scripts/preflight.py"`로 명시합니다.
 
 **4. ElevenLabs API 키 설정**(나레이션을 넣을 때 필요)
 
@@ -238,7 +242,7 @@ my-promo/
 | `finish.py` | 영상과 오디오를 합치고 공유용 파일, 포스터, SRT를 만듭니다 |
 | `qa_check.py` | 완성본을 자동 검수하고 `qa/qa_report.md`를 씁니다 |
 
-음악 렌더와 검증은 op55의 `render.mjs`, `verify.py`가 맡습니다(`SKILL.md` 5단계).
+음악 렌더와 검증은 `resolve-op55-tools/scripts`의 `render.mjs`, `verify.py`가 맡습니다(`SKILL.md` 5단계). showreel 믹스를 시험할 때는 `verify.py`에 `--mix timeline.json --mix-py "<showreel scripts>/mix.py"`를 넘깁니다. 계약 정본은 설치된 `resolve-op55-tools/references/showreel-contract.md`입니다.
 
 ## 저장소 구성
 
@@ -269,7 +273,7 @@ showreel/
 | `ELEVENLABS_API_KEY` | ElevenLabs 키. 환경 변수나 프로젝트 폴더의 `.env`에서 읽습니다 |
 | `REEL_CHROME_PATH` | Chrome이 기본 위치에 없을 때 Chrome 또는 Chromium 실행 파일 경로 |
 | `REEL_CHROME_CHANNEL` | Playwright 브라우저 채널(기본값 `chrome`) |
-| `OP55_SCRIPTS` | op55 스킬의 `scripts` 폴더. 기본 위치에서 찾지 못할 때 지정합니다 |
+| `OP55_SCRIPTS` | `resolve-op55-tools/scripts`의 확인한 절대 경로. 자동 탐색보다 우선하며, 잘못 지정하면 fallback하지 않습니다 |
 
 ## 문제 해결
 
@@ -281,7 +285,7 @@ showreel/
 | 나레이션에 에코가 많음 | `--hall` 없이 다시 믹스합니다(`mix.py` → `finish.py`, 영상 재렌더 불필요). 리버브를 남기려면 "말 끝 잔향"이 ✓가 될 때까지 `--hall`을 낮춥니다 |
 | 영상이 멈춰 보임 | `motion_check.py`가 알려 준 시각이 의도한 정지인지 확인하고, 아니면 새 사건(등장·재배치·카메라 이동)을 넣고 퇴장을 다음 구도로 이어지는 움직임으로 바꿉니다 |
 | 글꼴이 기본 고딕으로 나옴 | 렌더 로그의 폰트 줄과 `reel/fonts/fonts.css`의 굵기를 확인합니다 |
-| `preflight.py`의 BGM 스킬(op55)이 ✗ | `npx skills add ynginkim/op55 -a claude-code`로 설치하고 `node <op55>/scripts/setup.mjs`로 사운드뱅크를 받습니다. 다른 곳에 있으면 `OP55_SCRIPTS`를 지정합니다 |
+| `preflight.py`의 BGM 스킬(op55)이 ✗ | `npx skills@1.7.4 add ynginkim/op55 -a claude-code`로 8개를 설치하고 `node "<resolve-op55-tools>/scripts/setup.mjs"`로 사운드뱅크를 받습니다. 옛 스킬은 `npx skills@1.7.4 remove op55`로 제거합니다(전역은 `remove -g op55`). 잘못된 `OP55_SCRIPTS`는 고치거나 해제합니다 |
 | 음악 박과 화면 박이 어긋남 | `timeline.py`에 op55 `render.mjs`가 쓴 `analysis.json`을 줬는지 확인합니다. `music_tools.py analyze`로 다시 읽은 박은 쓰지 않습니다 |
 
 다른 사례는 `SKILL.md`와 `references/`의 각 문서에 있습니다.
