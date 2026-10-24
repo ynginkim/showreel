@@ -85,7 +85,7 @@ The skill is written for Korean content (Korean typography, Korean narration and
 | **Research** | Runs a background research agent. Every fact in the video needs a source URL and a confidence level; dates are checked against the calendar. |
 | **Script** | Separates on-screen text from pronunciation text, sizes the script to the length (60 s ≈ 240–255 Korean characters) and names cue words for scene changes. |
 | **Narration** | Used only when the request or the content needs it. ElevenLabs TTS (voice chosen to fit the concept; Marcus, a deep baritone, has verified reading settings) with per-line takes, regeneration of changed lines only, and STT verification of every line. |
-| **Music & SFX** | Music composed by Claude with the [op55](https://github.com/ynginkim/op55) skill: a `score.mjs` score rendered deterministically from synth voices and SoundFont samples, then verified by numbers (loudness, grid, energy). op55's `analysis.json` (the exact beat grid computed from the score) feeds the timeline directly. ElevenLabs Music is not used. SFX come from the ElevenLabs SFX API or the NumPy synthesizer; a 24-preset SFX kit. |
+| **Music & SFX** | Music composed by Claude with the [op55](https://github.com/ynginkim/op55) skill: a `score.mjs` score rendered deterministically from synth voices and SoundFont samples, then verified by numbers (loudness, grid, energy). See [op55 integration](references/op55.md) for the connection to showreel. ElevenLabs Music is not used. SFX come from the ElevenLabs SFX API or the NumPy synthesizer; a 24-preset SFX kit. |
 | **Images** | Generates only the scenes that need images with [codex-image](https://github.com/revfactory/skills), plus letterbox removal, upscaling and macOS Vision cutouts. Real people are never generated. |
 | **Motion engine** | A deterministic HTML/JS timeline (`REEL`): every frame is a pure function of time, so frames can be rendered in any order by parallel workers. |
 | **Techniques** | 22 proven code techniques (Hangul jamo assembly, variable-weight waves, glass type, particle type, match cuts and more) plus WebGL2 shaders, three.js 3D and precomputed simulations. The catalog is a code library, not a menu: segments start from the concept. |
@@ -122,7 +122,7 @@ Long-running steps (research, TTS, music, image generation, final render) run in
 | [Claude Code](https://docs.claude.com/en/docs/claude-code/overview) | Yes | Runs the skill |
 | macOS | Recommended | Tested platform. Linux works for rendering and audio with `REEL_CHROME_PATH`; cutouts need macOS |
 | Python 3.10+ with `numpy` and `Pillow` | Yes | Timeline, mix, QA, image prep, synthesizer |
-| Node.js 22.20.0+ | Yes | Renderer (`playwright-core`) and the `skills@1.7.4` installer. op55 rendering alone needs Node ≥ 18 |
+| Node.js 22.20.0+ | Yes | Renderer (`playwright-core`) and skill installation. See [op55 requirements](references/op55.md#설치와-경로) |
 | [op55](https://github.com/ynginkim/op55) skillset (8 skills) and sound banks (88 MB) | For music | Background music composition, render and verification. No music API key needed |
 | Google Chrome (or Chromium) | Yes | Headless rendering. No browser download needed |
 | ffmpeg with `loudnorm`, `ebur128`, `freezedetect`, `signalstats`, `tmix` | Yes | Encoding, loudness, QA |
@@ -155,16 +155,7 @@ cd ~/.claude/skills/showreel/scripts && npm install
 
 **3. Install op55** (background music)
 
-```bash
-npx skills@1.7.4 add ynginkim/op55 -a claude-code    # add -g to use it in every project
-node "<resolve-op55-tools>/scripts/setup.mjs"         # downloads the sound banks (88 MB) to ~/.cache/op55
-```
-
-Install all eight skills together: `op55-mode`, `op55-compose`, `op55-render`, `op55-verify`, `resolve-op55-tools`, and three principles. `<resolve-op55-tools>` above is that installed skill's base directory. showreel reads the three work skills (`op55-compose`, `op55-render`, `op55-verify`) directly. It does not run `op55-mode` inside showreel.
-
-`preflight.py` uses `$OP55_SCRIPTS` when set. Otherwise it looks for `resolve-op55-tools/scripts` next to the showreel folder, in `.claude/skills` and `.agents/skills` at and above the working folder, then in `~/.claude/skills` and `~/.agents/skills`. It reports the resolved path and whether the sound banks are present. An invalid explicit path stops music discovery. Old single-skill installs are never selected; preflight prints migration instructions.
-
-To upgrade, run the `add` command above, then `npx skills@1.7.4 remove op55` (or `npx skills@1.7.4 remove -g op55` for a global install). Scores and the bank cache stay in place. Once `resolve-op55-tools` confirms the scripts path, pass it explicitly: `OP55_SCRIPTS="<resolve-op55-tools>/scripts" python3 "<showreel>/scripts/preflight.py"`.
+Follow [op55 setup and tool paths](references/op55.md#설치와-경로) to install the skills and sound banks.
 
 **4. Set your ElevenLabs API key** (needed for narration)
 
@@ -238,7 +229,7 @@ All scripts live in `scripts/`. Claude runs them for you; the table is for refer
 | `new_project.py` | Creates the project folders, engine template, fonts and renderer dependencies. `--fonts` adds Google Fonts families |
 | `narrate.py` | Generates narration per line from `script.json`, only for changed lines; `--stt` verifies pronunciation |
 | `eleven.py` | ElevenLabs client (TTS, STT, Music, SFX, voices) using `curl`, with error-body detection |
-| `music_tools.py` | Upstream ElevenLabs music tools (composition plan, tempo/hit analysis, splicing). Not used on the default path; re-analyzing an op55 track's beats with `analyze` drifts toward the end |
+| `music_tools.py` | Upstream ElevenLabs music tools (composition plan, tempo/hit analysis, splicing). This fork follows [op55 integration](references/op55.md) for music |
 | `synth_music.py` | Deterministic NumPy SFX synthesizer (and upstream's fallback music). Used only for SFX on this fork's default path |
 | `timeline.py` | Builds `timeline.json` and `reel/timeline.js` (cues, word timings, loudness curve); flags overlaps and missing cues |
 | `prep_images.py` | Letterbox removal, upscaling, cutouts, review sheet |
@@ -250,7 +241,7 @@ All scripts live in `scripts/`. Claude runs them for you; the table is for refer
 | `finish.py` | Muxes video and audio, builds the share version, poster and SRT |
 | `qa_check.py` | Final automated QA and `qa/qa_report.md` |
 
-Music render and verification use `render.mjs` and `verify.py` in `resolve-op55-tools/scripts` (step 5 in `SKILL.md`). For a showreel test mix, pass `--mix timeline.json --mix-py "<showreel scripts>/mix.py"` to `verify.py`. The contract is in the installed `resolve-op55-tools/references/showreel-contract.md`.
+Music commands are in [SKILL.md step 5](SKILL.md#5-오디오를-먼저-만든다). Integration rules are in [op55 integration](references/op55.md).
 
 ## Repository layout
 
@@ -260,7 +251,8 @@ showreel/
 ├── references/          Detailed guides loaded per step
 │   ├── brief.md         What to ask, concept candidates and concept.md template, research prompt, time/credit estimates
 │   ├── story.md         Structures by purpose and length, copy and pronunciation rules
-│   ├── audio.md         Voices, ElevenLabs plans, music (op55 hookup), SFX, mix targets
+│   ├── audio.md         Voices, ElevenLabs plans, SFX, mix targets
+│   ├── op55.md          op55 setup, integration, music replacement and delivery
 │   ├── images.md        Image generation, real photos, cutouts
 │   ├── design.md        Art direction, the template look to avoid, motion principles, rhythm, Korean typography
 │   ├── engine.md        Engine API, scene authoring, WebGL & 3D, splitting work across agents
@@ -281,7 +273,7 @@ showreel/
 | `ELEVENLABS_API_KEY` | ElevenLabs key. Read from the environment or from `.env` in the project folder |
 | `REEL_CHROME_PATH` | Path to a Chrome/Chromium executable when Chrome is not installed in the default location |
 | `REEL_CHROME_CHANNEL` | Playwright browser channel (default `chrome`) |
-| `OP55_SCRIPTS` | Confirmed absolute path of `resolve-op55-tools/scripts`. Overrides discovery; an invalid path does not fall back |
+| `OP55_SCRIPTS` | See [op55 tool paths](references/op55.md#설치와-경로) for its meaning and usage |
 
 ## Troubleshooting
 
@@ -293,8 +285,8 @@ showreel/
 | Narration sounds echoey | Remix without `--hall` (`mix.py` → `finish.py`, no re-render). If you keep reverb, lower `--hall` until the "tail after speech" check shows ✓ |
 | The video looks static | Check whether the times `motion_check.py` reports are intended holds; if not, add events (entrances, re-layouts, camera moves) and turn exits into motion that leads into the next composition |
 | Fonts fall back to a default sans | Check the font line in the render log and the weights in `reel/fonts/fonts.css` |
-| `preflight.py` shows the BGM skill (op55) as ✗ | Install all 8 skills with `npx skills@1.7.4 add ynginkim/op55 -a claude-code`, then run `node "<resolve-op55-tools>/scripts/setup.mjs"`. Remove the old skill with `npx skills@1.7.4 remove op55` (`remove -g op55` for global). Correct or unset an invalid `OP55_SCRIPTS` |
-| Music beats and picture beats drift apart | Pass the `analysis.json` written by op55's `render.mjs` to `timeline.py`. Don't use beats re-read by `music_tools.py analyze` |
+| `preflight.py` shows the BGM skill (op55) as ✗ | Check [op55 installation, paths, and migration](references/op55.md#설치와-경로) |
+| Music beats and picture beats drift apart | Check analysis wiring and consumed values in the [op55 workflow](references/op55.md#프로젝트-제작-절차) |
 
 More cases are listed in `SKILL.md` and each file in `references/`.
 

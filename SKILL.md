@@ -69,7 +69,7 @@ description: 한국어 모션그래픽 영상(이력서용 쇼릴·홍보 영상
 python3 $S/preflight.py
 ```
 
-결과의 "쓸 수 있는 경로"를 콘셉트에 반영한다. `resolve-op55-tools`에서 경로를 확인했다면 `OP55_SCRIPTS="$O" python3 "$S/preflight.py"`로 같은 경로를 넘긴다(`O=<resolve-op55-tools>/scripts`).
+결과의 "쓸 수 있는 경로"를 콘셉트에 반영한다. 음악 도구 경로는 [op55 연동](references/op55.md#설치와-경로)을 따른다.
 
 - **codex CLI나 이미지 스킬이 없을 때**: codex-image·photoreal·codex-cli 스킬은 https://github.com/revfactory/skills 에 있다. 출력된 설치 명령을 사용자에게 안내한다. 설치하지 않으면 코드로 그린 그래픽과 사용자 제공 사진으로 구성한다. 사용자가 "realphoto"라고 부르는 스킬의 실제 이름은 `photoreal`이다.
 - **ElevenLabs 키가 없을 때**: 나레이션이 필요한 요청이면 `preflight.py`가 출력하는 키 발급 절차를 안내하고, 키를 받기 전까지 음악·화면 버전으로 진행할 수 있다고 알린다. 음악은 op55로 작곡하므로 키와 관계없다.
@@ -125,36 +125,26 @@ python3 $S/new_project.py <프로젝트> --ratio 16:9 --duration 60 [--fonts "Ha
 
 ## 5. 오디오를 먼저 만든다
 
-화면의 시각은 음악 박·히트와 나레이션 단어에서 정해지므로 오디오를 먼저 확정한다. 쇼릴은 음악이 편집의 기준이다. 음악은 [op55](https://github.com/ynginkim/op55)로 Claude가 직접 작곡한다. `op55-compose`, `op55-render`, `op55-verify`의 `SKILL.md`를 직접 읽고 큐 시트 → 격자 → `score.mjs` → 렌더 → 검증 순서로 따른다. showreel 안에서 `op55-mode`를 실행하지 않는다.
+[op55 연동](references/op55.md)을 먼저 읽고 다음 순서로 실행한다. 나레이션·효과음 기준은 [오디오 참조](references/audio.md)를 읽는다.
 
-세 work skill이 읽는 `resolve-op55-tools`로 경로와 도구를 확인한다. 아래 `O="<resolve-op55-tools의 base directory>/scripts"`는 확인한 절대 경로다(`preflight.py`도 이 경로를 보여 준다). `OP55_SCRIPTS="$O" python3 "$S/preflight.py"`로 같은 경로를 넘긴다. 없으면 `npx skills@1.7.4 add ynginkim/op55 -a claude-code`로 스킬 8개를 함께 설치하고 `node "$O/setup.mjs"`로 사운드뱅크를 받는다. 옛 단일 스킬이 남았으면 `npx skills@1.7.4 remove op55`로 제거한다(전역 설치는 `remove -g op55`). 순서는 이렇다.
-
-1. op55 예시(`$O/examples/`: starter 합성, eroica 샘플 오케스트라, pstack-harness 300초 설명 영상)에서 가까운 것을 `audio/music/score.mjs`로 복사한다.
-2. 박 격자를 먼저 정한다.
-3. `concept.md`의 구간대로 섹션·에너지·강세를 악보에 적는다. 구간마다 악기·질감은 아트 디렉션에 맞춘다. 합성 악기·실제 악기 샘플·혼합 중 무엇을 쓸지는 op55의 팔레트 표를 따른다. `spec.json`은 쓰지 않는다.
-4. `script.json`의 `music.file`은 `audio/music/music.wav`로 둔다.
-5. 나레이션을 배치한 뒤 나레이션 빈틈을 악보에 옮겨 적고 다시 렌더한다.
-
-나레이션·효과음 기준은 `references/audio.md`에 있다.
+1. 연동 문서가 지정한 work skill을 읽고 `$S`·`$O` 경로를 확인한다.
+2. 큐 시트와 악보를 작성하고 음악을 렌더·검수한다.
+3. 나레이션·효과음을 배치하고 타임라인을 만든다.
+4. 나레이션 gaps를 악보에 반영해 재렌더하고 타임라인을 갱신한다.
+5. 믹스를 검증한 뒤, 연동 문서에 따라 바뀐 장면을 갱신하고 10·11단계로 진행한다.
 
 ```bash
 cd "<프로젝트>"   # S와 O는 확인한 절대 경로
-python3 "$S/narrate.py" script.json --stt            # 나레이션이 있을 때. ✗ 줄은 고쳐서 다시
-# 음악(op55): score.mjs를 쓰고 렌더한다. analysis.json은 악보의 정확한 격자로 함께 쓰인다
+OP55_SCRIPTS="$O" python3 "$S/preflight.py"
 node "$O/render.mjs" --score audio/music/score.mjs --out audio/music/music.wav --analysis audio/music/analysis.json
-python3 "$O/verify.py" audio/music/music.wav --analysis audio/music/analysis.json --waveform-png --spec 0   # 출력한 PNG도 직접 연다
-python3 "$S/eleven.py" sfx-kit audio/sfx --names impact,riser   # 범용 프리셋이 필요한 곳만(합성: synth_music.py sfx). 구간 재질에 맞는 소리는 eleven.py sfx "prompt"
+python3 "$O/verify.py" audio/music/music.wav --analysis audio/music/analysis.json --waveform-png --spec 0
+python3 "$S/narrate.py" script.json --stt            # 나레이션이 있을 때
+python3 "$S/eleven.py" sfx-kit audio/sfx --names impact,riser   # 필요한 효과음만
 python3 "$S/timeline.py" script.json --music-analysis audio/music/analysis.json
-python3 "$O/verify.py" audio/music/music.wav --analysis audio/music/analysis.json --mix timeline.json --mix-py "$S/mix.py"   # 나레이션이 생긴 뒤: 줄마다 나레이션 대 배경 ✓
+# gaps를 반영해 악보를 고친 뒤 음악 렌더·검수와 timeline 명령을 다시 실행한다
+python3 "$O/verify.py" audio/music/music.wav --analysis audio/music/analysis.json --mix timeline.json --mix-py "$S/mix.py"
 ```
 
-- 음악 섹션은 4마디 단위로 잡고, 구간 경계·큰 히트는 다운비트에 둔다. 악보가 격자를 정하므로 드롭·히트를 원하는 시각에 바로 둘 수 있다.
-- `music_tools.py analyze`로 박을 다시 읽지 않는다. 정확한 격자의 곡도 템포를 약간 틀리게 읽어 5분 끝에서 70ms쯤 어긋난다. `render.mjs`가 쓴 `analysis.json`을 그대로 `timeline.py`에 준다.
-- 음악을 다시 만들면 기존 beats·downbeats와 1ms 이내로 맞는지 확인한다. 화면이 소비하는 `music.hitN` 번호, `music.start`, WAV에서 다시 계산하는 envelope(`REEL.level(t, 'music')` 등)도 확인한다. 소비하는 값이 바뀐 장면은 다시 렌더하고, `mix.py`·`finish.py`·QA는 항상 다시 실행한다.
-- 장면 경계는 `music.hitN`보다 `barN` 큐에 건다. 악보에 섹션이나 강세를 더하거나 빼면 `hitN` 번호가 밀린다.
-- 통과 기준은 `op55-verify/references/verify.md`를 따른다. `verify.py`는 exit 0이어도 항목별로 판정한다. 믹서·파일 누락, 빈 나레이션 표, 검증 WAV와 다른 `music.file` 경고는 미측정이다. 나레이션이 없는 곡의 mix margin은 N/A로 기록한다.
-- 필요한 것: op55 렌더는 Node 18 이상(npm 패키지 없음), `skills@1.7.4` 설치까지 하면 Node 22.20.0 이상. 기본 사운드뱅크는 `setup.mjs`로 받는다(88MB). `verify.py`는 ffmpeg와 numpy를 쓴다.
-- 납품 보고에 음악은 op55로 작곡했다고 적고, 사용자에게 직접 들어 봐 달라고 한다. `music.meta.json`의 `credits`에 크레딧 문구가 있으면 영상 크레딧에 넣는다.
 - 효과음은 화면의 움직임마다 맞춰 설계한다. 프리셋 이름만 고르지 말고 `eleven.py sfx "prompt"`로 구간의 재질(종이, 유리, 액체, 전자음)에 맞는 소리를 만든다.
 - 새로 만들기 전에 공용 효과음 라이브러리에서 찾는다.
   - `python3 $S/sfx_library.py find 종이`로 찾고, `python3 $S/sfx_library.py use <이름…> --to <프로젝트>`로 복사한다.
@@ -304,10 +294,7 @@ python3 $S/cleanup.py <프로젝트> --apply    # 지운다(--trash 면 휴지�
 | `references/brief.md` | 1·2단계: 물을 것과 묻지 않을 것, 콘셉트 만들기와 `concept.md` 양식, 시간·크레딧 추정, 조사·사진 수집 프롬프트 |
 | `references/story.md` | 4단계: 쇼릴 구성, 용도별 참고 구성, 길이별 기준값, 카피·발음 표기 규칙, 원고 양식 |
 | `references/audio.md` | 5·10단계: 보이스·모델·설정, ElevenLabs 키·플랜, 효과음, 믹스 기준 |
-| `op55-compose/SKILL.md`, `op55-compose/references/score.md`, `op55-compose/references/arranging.md` | 5단계: 큐 시트, 박 격자, 악보 API, 영상용 편곡 |
-| `op55-render/SKILL.md` | 5단계: WAV·analysis·meta 렌더 |
-| `op55-verify/SKILL.md`, `op55-verify/references/verify.md` | 5단계: 수치·PNG·나레이션 대 배경 검증 |
-| `resolve-op55-tools/SKILL.md`, `resolve-op55-tools/references/showreel-contract.md` | 경로·도구·bank 확인과 showreel 파일 계약. 위 op55 경로는 설치된 각 skill의 base directory 기준 |
+| [references/op55.md](references/op55.md) | 0·5·10·11단계: op55 설치·경로, 출력 연결, 음악 교체, 검증·납품 보고 |
 | `references/images.md` | 6단계: 이미지 생성·실사 사진·누끼·후처리 |
 | `references/design.md` | 2·7·8단계: 아트 디렉션 정하기, 뻔한 화면, 움직임 원칙, 리듬, 한글 타이포, 안전 영역, 전환 |
 | `references/engine.md` | 8단계: 엔진 API, 장면 작성법, WebGL·3D, 나눠 만들기 |

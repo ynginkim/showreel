@@ -98,7 +98,7 @@ stability를 바꾸거나 모델을 통째로 바꾸는 것은 효과가 없었�
 
 ## 음악
 
-> **이 수정판의 기본 경로는 [op55](https://github.com/ynginkim/op55)다.** BGM은 `op55-compose`·`op55-render`·`op55-verify`를 직접 읽고 작곡·렌더·검증한다. `op55-mode`는 실행하지 않는다. `resolve-op55-tools`가 확인한 scripts 절대 경로를 preflight에 `OP55_SCRIPTS`로 넘긴다. `music.wav`는 `script.json`의 `music.file`로, `analysis.json`은 `timeline.py --music-analysis`로 준다. 믹스 검증에는 `--mix timeline.json --mix-py "<showreel scripts>/mix.py"`를 붙인다. 파일 계약의 정본은 설치된 `resolve-op55-tools/references/showreel-contract.md`다. 아래 ElevenLabs Music·`synth_music.py` 내용은 업스트림 원문이라 남겨 두지만 쓰지 않는다. 스펙(`spec.json`)의 섹션·에너지를 정하는 방법은 그대로 참고한다.
+> 이 수정판의 음악 절차는 [op55 연동](op55.md)을 따른다. 아래 ElevenLabs Music·`synth_music.py` 내용은 업스트림 원문이라 남겨 두지만 쓰지 않는다. 스펙(`spec.json`)의 섹션·에너지를 정하는 방법은 그대로 참고한다.
 
 ### 1) 스펙 하나로 두 경로
 

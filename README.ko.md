@@ -77,7 +77,7 @@
 | **조사** | 조사를 서브에이전트에 백그라운드로 맡깁니다. 영상에 넣는 사실마다 출처 URL과 확실도를 적고, 날짜는 달력과 대조해 요일을 확인합니다. |
 | **원고** | 나레이션을 넣을 때는 화면 표기와 발음 표기를 나눠 쓰고 분량을 길이에 맞춥니다(60초에 공백 제외 220~255자). 장면 전환에 맞출 단어에 큐 이름을 붙입니다. |
 | **나레이션** | 요청에 있거나 내용상 필요할 때만 넣습니다. ElevenLabs TTS로 만들고, 보이스는 콘셉트에 맞춰 고릅니다(낭독 설정을 검증해 둔 보이스: Marcus, 깊은 바리톤). 줄마다 테이크를 여러 개 만들 수 있고, 바뀐 줄만 다시 생성하며, 받아쓰기(STT)로 모든 줄의 발음을 확인합니다. |
-| **음악·효과음** | 음악은 [op55](https://github.com/ynginkim/op55) 스킬로 Claude가 작곡합니다. 악보(`score.mjs`)를 쓰고, 합성 악기와 사운드폰트 샘플로 결정적으로 렌더하고, 음량·격자·에너지를 숫자로 검증합니다. op55가 쓴 `analysis.json`(악보에서 계산한 정확한 박 격자)을 그대로 타임라인에 씁니다. ElevenLabs Music은 쓰지 않습니다. 효과음은 ElevenLabs 효과음 API나 NumPy 합성기로 만들고, 프리셋은 24종입니다. |
+| **음악·효과음** | 음악은 [op55](https://github.com/ynginkim/op55) 스킬로 Claude가 작곡합니다. 악보(`score.mjs`)를 쓰고, 합성 악기와 사운드폰트 샘플로 결정적으로 렌더하고, 음량·격자·에너지를 숫자로 검증합니다. 연결 방법은 [op55 연동](references/op55.md)에 있습니다. ElevenLabs Music은 쓰지 않습니다. 효과음은 ElevenLabs 효과음 API나 NumPy 합성기로 만들고, 프리셋은 24종입니다. |
 | **이미지** | 이미지가 필요한 장면만 [codex-image](https://github.com/revfactory/skills)로 생성합니다. 레터박스 제거, 확대, macOS Vision 누끼를 처리합니다. 실존 인물은 생성하지 않습니다. |
 | **모션 엔진** | 결정적인 HTML/JS 타임라인(`REEL`)입니다. 모든 프레임이 시간 t만으로 정해지므로 여러 워커가 프레임 순서와 관계없이 나눠 렌더할 수 있습니다. |
 | **표현 기법** | 검증된 기법 코드 22종(한글 자모 조립, 가변 굵기 물결, 유리 활자, 입자 글자, 매치 컷 등)과 WebGL2 셰이더, three.js 3D, 미리 계산하는 시뮬레이션을 제공합니다. 기법 목록에서 고르는 것이 아니라 콘셉트에서 출발해 필요한 코드를 가져다 씁니다. |
@@ -114,7 +114,7 @@ flowchart LR
 | [Claude Code](https://docs.claude.com/en/docs/claude-code/overview) | 필수 | 스킬 실행 |
 | macOS | 권장 | 개발·검증한 환경입니다. Linux에서도 `REEL_CHROME_PATH`를 지정하면 렌더와 오디오 처리는 됩니다. 누끼는 macOS에서만 됩니다 |
 | Python 3.10 이상, `numpy`, `Pillow` | 필수 | 타임라인, 믹스, 검수, 이미지 후처리, 합성기 |
-| Node.js 22.20.0 이상 | 필수 | 렌더러(`playwright-core`)와 `skills@1.7.4` 설치. op55 렌더만 하면 Node 18 이상 |
+| Node.js 22.20.0 이상 | 필수 | 렌더러(`playwright-core`)와 스킬 설치. [op55 요구 사항](references/op55.md#설치와-경로) 참조 |
 | [op55](https://github.com/ynginkim/op55) 스킬 8개와 사운드뱅크(88MB) | 음악에 필요 | 배경음악 작곡·렌더·검증. 음악 API 키는 필요 없습니다 |
 | Google Chrome 또는 Chromium | 필수 | 헤드리스 렌더. 브라우저를 따로 내려받지 않습니다 |
 | ffmpeg(`loudnorm`, `ebur128`, `freezedetect`, `signalstats`, `tmix` 필터 포함) | 필수 | 인코딩, 음량 측정, 검수 |
@@ -147,16 +147,7 @@ cd ~/.claude/skills/showreel/scripts && npm install
 
 **3. op55 설치**(배경음악)
 
-```bash
-npx skills@1.7.4 add ynginkim/op55 -a claude-code    # 모든 프로젝트에 쓰려면 -g
-node "<resolve-op55-tools>/scripts/setup.mjs"         # 사운드뱅크(88MB)를 ~/.cache/op55에 받습니다
-```
-
-`op55-mode`, `op55-compose`, `op55-render`, `op55-verify`, `resolve-op55-tools`, principle 3개를 모두 함께 설치합니다. 위 `<resolve-op55-tools>`는 설치된 해당 스킬의 base directory입니다. showreel은 세 work skill(`op55-compose`·`op55-render`·`op55-verify`)을 직접 읽으며, 내부에서 `op55-mode`를 실행하지 않습니다.
-
-`preflight.py`는 `$OP55_SCRIPTS`가 있으면 그 경로를 씁니다. 없으면 `resolve-op55-tools/scripts`를 showreel 옆, 현재 작업 폴더부터 상위의 `.claude/skills`·`.agents/skills`, `~/.claude/skills`·`~/.agents/skills` 순서로 찾습니다. 찾은 절대 경로와 사운드뱅크 유무를 보여 줍니다. 명시한 경로가 잘못되면 음악 탐색을 멈춥니다. 옛 단일 스킬은 선택하지 않고 이전 명령을 안내합니다.
-
-이전하려면 위 `add` 명령을 실행한 뒤 `npx skills@1.7.4 remove op55`로 옛 스킬을 제거합니다(전역 설치는 `npx skills@1.7.4 remove -g op55`). 악보와 bank 캐시는 그대로 남습니다. `resolve-op55-tools`로 scripts 경로를 확인했다면 `OP55_SCRIPTS="<resolve-op55-tools>/scripts" python3 "<showreel>/scripts/preflight.py"`로 명시합니다.
+[op55 연동의 설치와 경로](references/op55.md#설치와-경로)를 따라 스킬과 사운드뱅크를 설치합니다.
 
 **4. ElevenLabs API 키 설정**(나레이션을 넣을 때 필요)
 
@@ -230,7 +221,7 @@ my-promo/
 | `new_project.py` | 프로젝트 폴더, 엔진 템플릿, 폰트, 렌더러 의존성을 준비합니다. `--fonts`로 Google Fonts 서체를 더합니다 |
 | `narrate.py` | `script.json`에서 바뀐 줄만 나레이션을 만듭니다. `--stt`로 발음을 검증합니다 |
 | `eleven.py` | ElevenLabs 클라이언트(TTS, STT, Music, 효과음, 보이스 목록). `curl`로 호출하고, 오류 응답이 음원 파일로 저장되는 것을 막습니다 |
-| `music_tools.py` | 업스트림의 ElevenLabs 음악 도구(구성 플랜, 템포·히트 분석, 구간 이어 붙이기). 기본 경로에서는 쓰지 않습니다. op55 곡의 박을 `analyze`로 다시 읽으면 곡 끝으로 갈수록 어긋납니다 |
+| `music_tools.py` | 업스트림 ElevenLabs 음악 도구(구성 플랜, 템포·히트 분석, 구간 이어 붙이기). 이 포크의 음악 절차는 [op55 연동](references/op55.md)을 따릅니다 |
 | `synth_music.py` | NumPy로 효과음(과 업스트림의 대체 음악)을 합성합니다. 이 포크의 기본 경로에서는 효과음에만 씁니다 |
 | `timeline.py` | `timeline.json`과 `reel/timeline.js`(큐, 단어 시각, 음량 곡선)를 만들고 겹침과 큐 누락을 알려 줍니다 |
 | `prep_images.py` | 레터박스 제거, 확대, 누끼, 확인용 시트 |
@@ -242,7 +233,7 @@ my-promo/
 | `finish.py` | 영상과 오디오를 합치고 공유용 파일, 포스터, SRT를 만듭니다 |
 | `qa_check.py` | 완성본을 자동 검수하고 `qa/qa_report.md`를 씁니다 |
 
-음악 렌더와 검증은 `resolve-op55-tools/scripts`의 `render.mjs`, `verify.py`가 맡습니다(`SKILL.md` 5단계). showreel 믹스를 시험할 때는 `verify.py`에 `--mix timeline.json --mix-py "<showreel scripts>/mix.py"`를 넘깁니다. 계약 정본은 설치된 `resolve-op55-tools/references/showreel-contract.md`입니다.
+음악 실행 명령은 [SKILL.md 5단계](SKILL.md#5-오디오를-먼저-만든다), 연동 규칙은 [op55 연동](references/op55.md)에 있습니다.
 
 ## 저장소 구성
 
@@ -252,7 +243,8 @@ showreel/
 ├── references/          단계마다 읽는 상세 문서
 │   ├── brief.md         물을 것과 묻지 않을 것, 콘셉트 후보와 concept.md 양식, 조사 요청, 시간·크레딧 추정
 │   ├── story.md         용도·길이별 구성, 카피와 발음 표기 규칙
-│   ├── audio.md         보이스, ElevenLabs 플랜, 음악(op55 연결), 효과음, 믹스 기준
+│   ├── audio.md         보이스, ElevenLabs 플랜, 효과음, 믹스 기준
+│   ├── op55.md          op55 설치·연동·음악 교체·납품 규칙
 │   ├── images.md        이미지 생성, 실제 사진, 누끼
 │   ├── design.md        아트 디렉션 정하기, 뻔한 화면, 움직임 원칙, 리듬, 한글 타이포그래피
 │   ├── engine.md        엔진 API, 장면 작성법, WebGL·3D, 나눠 만들기
@@ -273,7 +265,7 @@ showreel/
 | `ELEVENLABS_API_KEY` | ElevenLabs 키. 환경 변수나 프로젝트 폴더의 `.env`에서 읽습니다 |
 | `REEL_CHROME_PATH` | Chrome이 기본 위치에 없을 때 Chrome 또는 Chromium 실행 파일 경로 |
 | `REEL_CHROME_CHANNEL` | Playwright 브라우저 채널(기본값 `chrome`) |
-| `OP55_SCRIPTS` | `resolve-op55-tools/scripts`의 확인한 절대 경로. 자동 탐색보다 우선하며, 잘못 지정하면 fallback하지 않습니다 |
+| `OP55_SCRIPTS` | [op55 도구 경로](references/op55.md#설치와-경로)에서 의미와 지정 방법을 확인합니다 |
 
 ## 문제 해결
 
@@ -285,8 +277,8 @@ showreel/
 | 나레이션에 에코가 많음 | `--hall` 없이 다시 믹스합니다(`mix.py` → `finish.py`, 영상 재렌더 불필요). 리버브를 남기려면 "말 끝 잔향"이 ✓가 될 때까지 `--hall`을 낮춥니다 |
 | 영상이 멈춰 보임 | `motion_check.py`가 알려 준 시각이 의도한 정지인지 확인하고, 아니면 새 사건(등장·재배치·카메라 이동)을 넣고 퇴장을 다음 구도로 이어지는 움직임으로 바꿉니다 |
 | 글꼴이 기본 고딕으로 나옴 | 렌더 로그의 폰트 줄과 `reel/fonts/fonts.css`의 굵기를 확인합니다 |
-| `preflight.py`의 BGM 스킬(op55)이 ✗ | `npx skills@1.7.4 add ynginkim/op55 -a claude-code`로 8개를 설치하고 `node "<resolve-op55-tools>/scripts/setup.mjs"`로 사운드뱅크를 받습니다. 옛 스킬은 `npx skills@1.7.4 remove op55`로 제거합니다(전역은 `remove -g op55`). 잘못된 `OP55_SCRIPTS`는 고치거나 해제합니다 |
-| 음악 박과 화면 박이 어긋남 | `timeline.py`에 op55 `render.mjs`가 쓴 `analysis.json`을 줬는지 확인합니다. `music_tools.py analyze`로 다시 읽은 박은 쓰지 않습니다 |
+| `preflight.py`의 BGM 스킬(op55)이 ✗ | [op55 설치·경로·이전 안내](references/op55.md#설치와-경로)를 확인합니다 |
+| 음악 박과 화면 박이 어긋남 | [op55 제작 절차](references/op55.md#프로젝트-제작-절차)의 분석 연결과 소비 값 비교를 확인합니다 |
 
 다른 사례는 `SKILL.md`와 `references/`의 각 문서에 있습니다.
 
